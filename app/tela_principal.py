@@ -9,11 +9,11 @@ class PDFMasterApp:
     __author__ = "Dawison Nascimento"
     __license__ = "MIT License"
     __version__ = "1.0.0"
-    __last_update__ = "14/11/2024, às 11:00"
+    __last_update__ = "29/05/2025"
 
     def __init__(self, nome_usuario=None):
         # Inicialização das variáveis globais como atributos da classe
-        self.nome_usuario = nome_usuario
+        self.nome_usuario = nome_usuario.title()
         self.entry_caminho_pasta = None
         self.entry_nome_do_arquivo_pdf = None
         self.btn_versao = None
@@ -44,8 +44,12 @@ class PDFMasterApp:
         self.janela = customtkinter.CTk()
         self.janela.title("PDFMaster")
         
-        tamanho_da_janela = "540x370"
+        tamanho_da_janela = "540x420"
         self.janela.geometry(tamanho_da_janela)
+
+        # Título da janela com o nome do usuário
+        titulo = customtkinter.CTkLabel(master=self.janela, text=f"Bem-vindo, {self.nome_usuario}!", font=("Segoe UI", 16, "bold"))
+        titulo.pack(pady=(10, 5))
      
         self.tab_janela = customtkinter.CTkTabview(master=self.janela, border_width=2, height=35, width=520)
         self.tab_janela.pack(pady=(0,5))  # Ajusta o padding e expande para preencher o espaço

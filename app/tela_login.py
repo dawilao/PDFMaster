@@ -165,7 +165,7 @@ class LoginManager:
         self.janela_alterar = ctk.CTk()
         self.janela_alterar.title("Alterar Senha")
         self.janela_alterar.geometry("400x370")
-        ctk.set_default_color_theme("green")
+        ctk.set_default_color_theme("blue")
 
         frame = ctk.CTkFrame(master=self.janela_alterar)
         frame.pack(fill="both", expand=True, padx=5, pady=5)
@@ -225,9 +225,13 @@ class LoginManager:
             tuple: Tupla contendo (root_login, entry_usuario, entry_senha)
         """
         self.root_login = ctk.CTk()
-        self.root_login.title("Login")
-        self.root_login.geometry("300x350")
-        ctk.set_default_color_theme("green")
+        self.root_login.title("PDFMaster - Login")
+        self.root_login.geometry("300x380")
+        ctk.set_default_color_theme("blue")
+
+        # Título da janela
+        titulo = ctk.CTkLabel(master=self.root_login, text="PDFMaster", font=("Segoe UI", 32, "bold"))
+        titulo.pack(pady=(20, 0))
 
         # Cria um rótulo (label) para o campo de entrada do nome de usuário
         label_usuario = ctk.CTkLabel(master=self.root_login, text="Usuário:", anchor="w")

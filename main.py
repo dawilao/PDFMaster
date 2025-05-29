@@ -14,10 +14,10 @@ Interface gráfica desenvolvida usando o customtkinter.
 __author__ = "Dawison Nascimento"
 __status__ = "Stable"
 __license__ = "MIT license"
-__copyright__ = "Copyright (c) 2025 Dawison Nascimento and other contributors"
+__copyright__ = "Copyright (c) 2025 Dawison Nascimento"
 __maintainer__ = "Dawison Nascimento"
 __email__ = "daw_afk@tutamail.com"
-__url__ = "https://github.com/dawilao/GeradorSolicitacaoCompras"
+__url__ = "https://github.com/dawilao/PDFMaster"
 
 from app.tela_login import janela_login
 
