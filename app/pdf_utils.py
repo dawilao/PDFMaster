@@ -30,7 +30,7 @@ def convert_to_pdf(pasta_imagens, output_pdf):
             imagens.extend(glob.glob(os.path.join(pasta_imagens, extensao.upper())))
         
         if not imagens:
-            messagebox.showerror("Erro", "Não há arquivos válidos para inclusão no PDF.")
+            handle_error("convert_to_pdf", "Não há arquivos válidos para inclusão no PDF.", None)
             return
         
         # Verifica se o arquivo PDF já existe
@@ -94,7 +94,7 @@ def convert_to_pdf(pasta_imagens, output_pdf):
         messagebox.showinfo("Sucesso", f"PDF criado com sucesso: {output_pdf}")
         
     except Exception as e:
-        messagebox.showerror("Erro", f"Erro ao converter imagens para PDF: {str(e)}")
+        handle_error("convert_to_pdf", f"Erro ao converter imagens para PDF: {str(e)}", None)
 
 
 def dividir_pdf_1(arquivo_pdf):
@@ -125,7 +125,7 @@ def dividir_pdf_1(arquivo_pdf):
         messagebox.showinfo("Sucesso", "Divisão de PDF concluída.")
         
     except Exception as e:
-        messagebox.showerror("Erro", f"Erro ao dividir PDF: {str(e)}")
+        handle_error("dividir_pdf_1", f"Erro ao dividir PDF: {str(e)}", None)
 
 
 def reduzir_tamanho_pdf(input_pdf, output_pdf, qualidade_imagem=30, nivel_compressao=7):

@@ -9,8 +9,7 @@ from .pdf_utils import convert_to_pdf, dividir_pdf_1, dividir_pdf_por_tamanho, s
 class PDFMasterApp:
     __author__ = "Dawison Nascimento"
     __license__ = "MIT License"
-    __version__ = "1.0.0"
-    __last_update__ = "29/05/2025"
+    __version__ = "1.1.0"
 
     def __init__(self, nome_usuario=None):
         # Inicialização das variáveis globais como atributos da classe
@@ -422,7 +421,6 @@ class PDFMasterApp:
             f"Criado por: {self.__author__}\n"
             f"Licença: {self.__license__}\n"
             f"Versão: {self.__version__}\n"
-            f"Última atualização: {self.__last_update__}"
         )
 
     def run(self):
