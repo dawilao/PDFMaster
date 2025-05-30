@@ -7,7 +7,10 @@ from PIL import Image
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import A4
 
-from app.utils import handle_error
+try:
+    from .utils import handle_error
+except ImportError:
+    from utils import handle_error
 
 def convert_to_pdf(pasta_imagens, output_pdf):
     """
@@ -30,7 +33,7 @@ def convert_to_pdf(pasta_imagens, output_pdf):
             imagens.extend(glob.glob(os.path.join(pasta_imagens, extensao.upper())))
         
         if not imagens:
-            handle_error("convert_to_pdf", "Não há arquivos válidos para inclusão no PDF.", None)
+            messagebox.showinfo("Aviso", "Não há arquivos válidos para inclusão no PDF.")
             return
         
         # Verifica se o arquivo PDF já existe
@@ -97,33 +100,40 @@ def convert_to_pdf(pasta_imagens, output_pdf):
         handle_error("convert_to_pdf", f"Erro ao converter imagens para PDF: {str(e)}", None)
 
 
-def dividir_pdf_1(arquivo_pdf):
+def dividir_pdf_1(diretorio):
     """
     Divide um PDF em páginas individuais
     
     Args:
-        arquivo_pdf (str): Caminho do arquivo PDF a ser dividido
+        diretorio (str): Caminho do arquivo PDF a ser dividido
     """
     try:
         nome_arquivo = os.path.splitext(os.path.basename(diretorio))[0]
         pasta_saida = os.path.dirname(diretorio)  # Obtém o diretório do arquivo original
         pdf = PdfReader(diretorio)
         
-        # Para cada página do PDF, cria um novo arquivo PDF com a página única
-        for pagina in range(len(pdf.pages)):
-            escreve_pdf = PdfWriter()
-            escreve_pdf.add_page(pdf.pages[pagina])
+        if len(pdf.pages) == 0:
+            messagebox.showinfo("Aviso", "O PDF não contém páginas para dividir.")
+            return
+        elif len(pdf.pages) == 1:
+            messagebox.showinfo("Aviso", "O PDF contém apenas uma página. Nenhuma divisão necessária.")
+            return
+        else:
+            # Para cada página do PDF, cria um novo arquivo PDF com a página única
+            for pagina in range(len(pdf.pages)):
+                escreve_pdf = PdfWriter()
+                escreve_pdf.add_page(pdf.pages[pagina])
 
-            nome_arquivo_saida = '{}_{}.pdf'.format(nome_arquivo, pagina)
-            nome_completo_saida = os.path.join(pasta_saida, nome_arquivo_saida)
+                nome_arquivo_saida = '{}_{}.pdf'.format(nome_arquivo, pagina)
+                nome_completo_saida = os.path.join(pasta_saida, nome_arquivo_saida)
+                
+                with open(nome_completo_saida, 'wb') as saida:
+                    escreve_pdf.write(saida)
+                
+                print('Criado: {}'.format(nome_arquivo_saida))
             
-            with open(nome_completo_saida, 'wb') as saida:
-                escreve_pdf.write(saida)
+            messagebox.showinfo("Sucesso", "Divisão de PDF concluída.")
             
-            print('Criado: {}'.format(nome_arquivo_saida))
-        
-        messagebox.showinfo("Sucesso", "Divisão de PDF concluída.")
-        
     except Exception as e:
         handle_error("dividir_pdf_1", f"Erro ao dividir PDF: {str(e)}", None)
 

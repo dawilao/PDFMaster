@@ -163,9 +163,13 @@ class LoginManager:
         
         # Criar janela de alteração de senha
         self.janela_alterar = ctk.CTk()
-        self.janela_alterar.title("Alterar Senha")
-        self.janela_alterar.geometry("400x370")
+        self.janela_alterar.title("PDFMaster - Alterar Senha")
+        self.janela_alterar.geometry("300x400")
         ctk.set_default_color_theme("blue")
+
+        """# Título da janela
+        titulo = ctk.CTkLabel(master=self.janela_alterar, text="PDFMaster\nAlterar senha", font=("Segoe UI", 32, "bold"))
+        titulo.pack(pady=(20, 0))"""
 
         frame = ctk.CTkFrame(master=self.janela_alterar)
         frame.pack(fill="both", expand=True, padx=5, pady=5)
@@ -173,24 +177,39 @@ class LoginManager:
         frame.grid_columnconfigure(1, weight=1)
         frame.grid_columnconfigure(2, weight=1)
 
+        # Substitua as linhas do título e subtítulo por:
+        titulo = ctk.CTkLabel(
+            master=frame, 
+            text="PDFMaster", 
+            font=("Segoe UI", 32, "bold")
+        )
+        titulo.grid(row=0, column=1, pady=(20, 0), padx=20)
+
+        subtitulo = ctk.CTkLabel(
+            master=frame, 
+            text="Alterar senha", 
+            font=("Segoe UI", 16, "bold")
+        )
+        subtitulo.grid(row=1, column=1, pady=(0, 0), padx=20)
+
         # Criação dos campos para usuário e senha
         label_usuario_alt = ctk.CTkLabel(master=frame, text="Usuário:", anchor="w")
-        label_usuario_alt.grid(row=0, column=1, sticky="w", pady=(5, 0))
+        label_usuario_alt.grid(row=2, column=1, sticky="w", pady=(5, 0))
 
         entry_usuario_alt = CustomEntry(master=frame, placeholder_text="Insira o usuário")
-        entry_usuario_alt.grid(row=1, column=1, sticky="ew")
+        entry_usuario_alt.grid(row=3, column=1, sticky="ew")
 
         label_senha_atual = ctk.CTkLabel(master=frame, text="Senha Atual:", anchor="w")
-        label_senha_atual.grid(row=2, column=1, sticky="w", pady=(10, 0))
+        label_senha_atual.grid(row=4, column=1, sticky="w", pady=(10, 0))
 
         entry_senha_atual = CustomEntry(master=frame, show="*", placeholder_text="Insira a senha atual")
-        entry_senha_atual.grid(row=3, column=1, sticky="ew")
+        entry_senha_atual.grid(row=5, column=1, sticky="ew")
 
         label_nova_senha = ctk.CTkLabel(master=frame, text="Nova Senha:", anchor="w")
-        label_nova_senha.grid(row=4, column=1, sticky="w", pady=(10, 0))
+        label_nova_senha.grid(row=6, column=1, sticky="w", pady=(10, 0))
 
         entry_nova_senha = CustomEntry(master=frame, show="*", placeholder_text="Insira a nova senha")
-        entry_nova_senha.grid(row=5, column=1, sticky="ew")
+        entry_nova_senha.grid(row=7, column=1, sticky="ew")
 
         # Botão para alterar a senha
         botao_alterar_senha = ctk.CTkButton(
@@ -198,7 +217,7 @@ class LoginManager:
             text="Alterar Senha", 
             command=lambda: self._alterar_senha(entry_usuario_alt, entry_senha_atual, entry_nova_senha)
         )
-        botao_alterar_senha.grid(row=6, column=1, sticky="ew", pady=(15, 0))
+        botao_alterar_senha.grid(row=8, column=1, sticky="ew", pady=(15, 0))
 
         self.janela_alterar.bind("<Return>", lambda enter: botao_alterar_senha.invoke())
 
@@ -210,7 +229,7 @@ class LoginManager:
             hover_color="Dark red",
             command=self._voltar_para_login
         )
-        botao_voltar.grid(row=7, column=1, sticky="ew", pady=(10, 5))
+        botao_voltar.grid(row=9, column=1, sticky="ew", pady=(10, 5))
 
         self.janela_alterar.mainloop()
 

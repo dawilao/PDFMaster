@@ -2,9 +2,13 @@ import customtkinter
 import os
 import webbrowser
 import traceback
-from .utils import config_btn, switch_altera_modo_dark_light, print_dimensao, validar_caminho_ou_selecionar, criar_pastas, handle_error
-from .pdf_utils import convert_to_pdf, dividir_pdf_1, dividir_pdf_por_tamanho, selecionar_arquivo_pdf
 
+try:
+    from .utils import config_btn, switch_altera_modo_dark_light, print_dimensao, validar_caminho_ou_selecionar, criar_pastas, handle_error
+    from .pdf_utils import convert_to_pdf, dividir_pdf_1, dividir_pdf_por_tamanho, selecionar_arquivo_pdf
+except ImportError:
+    from utils import config_btn, switch_altera_modo_dark_light, print_dimensao, validar_caminho_ou_selecionar, criar_pastas, handle_error
+    from pdf_utils import convert_to_pdf, dividir_pdf_1, dividir_pdf_por_tamanho, selecionar_arquivo_pdf
 
 class PDFMasterApp:
     __author__ = "Dawison Nascimento"
@@ -31,6 +35,7 @@ class PDFMasterApp:
         self.frame_switch = None
         self.label_switch = None
         self.espaco_centralizar_switch = 0
+        self.tamanho_janela = "540x420"
         
         # Configurar modo de aparência
         customtkinter.set_appearance_mode("system")
@@ -44,8 +49,7 @@ class PDFMasterApp:
         self.janela = customtkinter.CTk()
         self.janela.title("PDFMaster")
         
-        tamanho_da_janela = "540x420"
-        self.janela.geometry(tamanho_da_janela)
+        self.janela.geometry(self.tamanho_janela)
 
         # Título da janela com o nome do usuário
         titulo = customtkinter.CTkLabel(master=self.janela, text=f"Bem-vindo, {self.nome_usuario}!", font=("Segoe UI", 16, "bold"))
@@ -70,17 +74,17 @@ class PDFMasterApp:
         aba_imagem_pdf = self.tab_janela.add("Imagem para PDF")
 
         # Frame para separação dos botões
-        frame_aba_imagem_pdf = customtkinter.CTkFrame(master=aba_imagem_pdf, border_width=0, width=350)
+        frame_aba_imagem_pdf = customtkinter.CTkFrame(master=aba_imagem_pdf, border_width=0, width=400)
         frame_aba_imagem_pdf.pack(padx=0, fill="x")
 
         # Cria um rótulo (label) para o campo de entrada do caminho (pasta) para localização das fotos
-        label_caminho_pasta = customtkinter.CTkLabel(master=frame_aba_imagem_pdf, text="Caminho:", anchor="w", width=350)
+        label_caminho_pasta = customtkinter.CTkLabel(master=frame_aba_imagem_pdf, text="Caminho:", anchor="w", width=400)
         label_caminho_pasta.pack(pady=(5,0), padx=0)
 
         # Cria um campo de entrada (Entry) para o usuário digitar o caminho (pasta) para localização das fotos
         self.entry_caminho_pasta = customtkinter.CTkEntry(master=frame_aba_imagem_pdf, 
                                                      placeholder_text="Insira o caminho",
-                                                     width=350,
+                                                     width=400,
                                                      border_width=1)
         self.entry_caminho_pasta.pack(pady=0)
 
@@ -88,13 +92,13 @@ class PDFMasterApp:
         label_nome_arquivo_pdf = customtkinter.CTkLabel(master=frame_aba_imagem_pdf,
                                                        text="Nome do arquivo PDF:", 
                                                        anchor="w", 
-                                                       width=350)
+                                                       width=400)
         label_nome_arquivo_pdf.pack(pady=(5,0), padx=0)
         
         # Cria um campo de entrada (Entry) para o usuário digitar o nome do arquivo PDF
         self.entry_nome_do_arquivo_pdf = customtkinter.CTkEntry(master=frame_aba_imagem_pdf,
-                                                     placeholder_text="Nome do arquivo PDF",
-                                                     width=350,
+                                                     placeholder_text="Insira o nome para o PDF. Deixe em branco para usar 'EXECUÇÃO'",
+                                                     width=400,
                                                      border_width=1)
         self.entry_nome_do_arquivo_pdf.pack(pady=(5, 10))
 
@@ -175,12 +179,12 @@ class PDFMasterApp:
         self.frame_contatos_sair = customtkinter.CTkFrame(master=self.janela)
         self.frame_contatos_sair.pack(side='bottom', fill='x', padx=0)
 
-        # Configura o layout do frame para usar grid com 5 colunas
-        self.frame_contatos_sair.grid_columnconfigure(0, weight=0, minsize=10)  # Coluna da esquerda
-        self.frame_contatos_sair.grid_columnconfigure(1, weight=0, minsize=170)  # Coluna do centro
-        self.frame_contatos_sair.grid_columnconfigure(2, weight=0, minsize=180)  # Coluna da direita
-        self.frame_contatos_sair.grid_columnconfigure(3, weight=0, minsize=170)  # Coluna da direita
-        self.frame_contatos_sair.grid_columnconfigure(4, weight=0, minsize=10)  # Coluna da direita
+        # Configura o layout do frame para usar grid com pesos proporcionais
+        self.frame_contatos_sair.grid_columnconfigure(0, weight=1)  # Espaço flexível à esquerda
+        self.frame_contatos_sair.grid_columnconfigure(1, weight=2)  # Switch
+        self.frame_contatos_sair.grid_columnconfigure(2, weight=2)  # Botões centrais
+        self.frame_contatos_sair.grid_columnconfigure(3, weight=2)  # Botões à direita
+        self.frame_contatos_sair.grid_columnconfigure(4, weight=1)  # Espaço flexível à direita
 
         self.create_switch_section()
         self.create_central_buttons()
@@ -391,7 +395,7 @@ class PDFMasterApp:
     def _ajustar_janela(self):
         """Ajusta o tamanho da janela ao conteúdo"""
         self.janela.update_idletasks()
-        self.janela.geometry("")
+        self.janela.geometry(self.tamanho_janela)
 
     def versao(self):
         """Mostra informações sobre a versão"""
