@@ -1,4 +1,5 @@
 import customtkinter
+import os
 import webbrowser
 import traceback
 from .utils import config_btn, switch_altera_modo_dark_light, print_dimensao, validar_caminho_ou_selecionar, criar_pastas, handle_error
@@ -359,9 +360,12 @@ class PDFMasterApp:
         
         # Seleciona o arquivo PDF
         arquivo = selecionar_arquivo_pdf(caminho_inicial)
+
+        # Obtém o diretório de saída
+        pasta_saida = os.path.dirname(arquivo)
         
         if arquivo:
-            dividir_pdf_por_tamanho(arquivo, tamanho_max_mb=5)
+            dividir_pdf_por_tamanho(arquivo, pasta_saida)
 
     def toggle_ajuda(self):
         """Toggle para mostrar/esconder ajuda"""

@@ -1,15 +1,13 @@
+import shutil
 import os
+import glob
+from pypdf import PdfReader, PdfWriter
 from tkinter import filedialog, messagebox
-from PIL import Image
-import glob
-
-
-import os
-import glob
-from tkinter import messagebox
 from PIL import Image
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import A4
+
+from app.utils import handle_error
 
 def convert_to_pdf(pasta_imagens, output_pdf):
     """
@@ -130,21 +128,76 @@ def dividir_pdf_1(arquivo_pdf):
         messagebox.showerror("Erro", f"Erro ao dividir PDF: {str(e)}")
 
 
-def reduzir_tamanho_pdf(input_pdf, output_pdf):
-    writer = PdfWriter(clone_from=input_pdf)
+def reduzir_tamanho_pdf(input_pdf, output_pdf, qualidade_imagem=30, nivel_compressao=7):
+    from app.utils import handle_error
+    """
+    Reduz o tamanho de um arquivo PDF comprimindo conteúdo e imagens.
+    
+    Args:
+        input_pdf (str): Caminho do arquivo PDF de entrada
+        output_pdf (str): Caminho do arquivo PDF de saída
+        qualidade_imagem (int): Qualidade das imagens (1-100, padrão: 40)
+        nivel_compressao (int): Nível de compressão (1-9, padrão: 9)
+    
+    Returns:
+        bool: True se bem-sucedido, False caso contrário
+    """
+    try:
+        # Cria o writer e clona do reader
+        writer = PdfWriter()
+        
+        # Abre e lê o PDF original
+        with open(input_pdf, "rb") as input_file:
+            reader = PdfReader(input_file)
+            
+            # Processa cada página
+            for i, page in enumerate(reader.pages):
+                # Adiciona a página ao writer PRIMEIRO
+                writer.add_page(page)
+                
+                # Agora processa a página que pertence ao writer
+                writer_page = writer.pages[i]
+                
+                # Comprime streams de conteúdo
+                try:
+                    writer_page.compress_content_streams(level=nivel_compressao)
+                except Exception as e:
+                    handle_error("reduzir_tamanho_pdf", f"Erro ao comprimir página {i+1}: {e}", None)
+                
+                # Processa imagens na página
+                try:
+                    if hasattr(writer_page, 'images') and writer_page.images:
+                        for img in writer_page.images:
+                            try:
+                                img.replace(img.image, quality=qualidade_imagem)
+                                # Sucesso ao processar imagem, não precisa logar
+                            except Exception as e:
+                                handle_error("reduzir_tamanho_pdf", f"Erro ao processar imagem na página {i+1}: {e}", None)
+                except Exception as e:
+                    handle_error("reduzir_tamanho_pdf", f"Erro ao acessar imagens da página {i+1}: {e}", None)
+        
+        # Aplica compressão adicional no writer
+        try:
+            writer.compress_identical_objects()
+        except Exception as e:
+            handle_error("reduzir_tamanho_pdf", f"Erro ao comprimir objetos idênticos: {e}", None)
+        
+        # Salva o arquivo
+        with open(output_pdf, "wb") as output_file:
+            writer.write(output_file)
+        
+        # PDF reduzido salvo com sucesso
+        return True
+        
+    except FileNotFoundError:
+        handle_error("reduzir_tamanho_pdf", f"Arquivo não encontrado: {input_pdf}", None)
+        return False
+    except Exception as e:
+        handle_error("reduzir_tamanho_pdf", f"Erro ao processar PDF: {e}", None)
+        return False
 
-    for page in writer.pages:
-        page.compress_content_streams(level=7)
 
-        for img in page.images:
-            img.replace(img.image, quality=40)
-            print("Imagem atual: ", img)
-
-    with open(output_pdf, "wb") as f:
-        writer.write(f)
-
-
-def dividir_pdf_por_tamanho(arquivo_pdf, tamanho_max_mb=5):
+def dividir_pdf_por_tamanho(caminho, caminho_saida, tamanho_mb_maximo=4.4):
     """
     Divide um PDF em partes menores baseado no tamanho máximo especificado
     
