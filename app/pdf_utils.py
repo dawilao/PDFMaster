@@ -129,7 +129,6 @@ def dividir_pdf_1(arquivo_pdf):
 
 
 def reduzir_tamanho_pdf(input_pdf, output_pdf, qualidade_imagem=30, nivel_compressao=7):
-    from app.utils import handle_error
     """
     Reduz o tamanho de um arquivo PDF comprimindo conteúdo e imagens.
     
@@ -225,7 +224,12 @@ def dividir_pdf_por_tamanho(caminho, caminho_saida, tamanho_mb_maximo=4.4):
         tamanho_sem_compactar = round(os.path.getsize(caminho_temp) / 1048576, 2) # Converte para MB
 
         # Compactar o arquivo PDF antes de dividir
-        reduzir_tamanho_pdf(caminho_temp, caminho_temp)
+        sucesso_compactacao = reduzir_tamanho_pdf(caminho_temp, caminho_temp)
+        if not sucesso_compactacao:
+            # Excluir a pasta temporária criada
+            if os.path.exists(temp_folder):
+                shutil.rmtree(temp_folder)
+            return
 
         tamanho_compactado = round(os.path.getsize(caminho_temp) / 1048576, 2)  # Converte para MB
 
@@ -317,7 +321,7 @@ def dividir_pdf_por_tamanho(caminho, caminho_saida, tamanho_mb_maximo=4.4):
             messagebox.showinfo("Sucesso", f"Compressão de PDF concluída.\n\n{'\n'.join(mensagem_final)}")
         
     except Exception as e:
-        messagebox.showerror("Erro", f"Erro ao dividir PDF por tamanho: {str(e)}")
+        handle_error("dividir_pdf_por_tamanho", f"Erro ao dividir PDF por tamanho: {str(e)}", None)
 
 
 def selecionar_arquivo_pdf(caminho_inicial=""):
