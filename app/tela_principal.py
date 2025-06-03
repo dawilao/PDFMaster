@@ -3,6 +3,7 @@ import os
 import webbrowser
 import traceback
 import threading
+import re
 
 try:
     from .utils import config_btn, switch_altera_modo_dark_light, print_dimensao, validar_caminho_ou_selecionar, criar_pastas, handle_error
@@ -390,7 +391,7 @@ class PDFMasterApp:
         nome_arquivo = re.sub(caracteres_invalidos, '_', nome_arquivo)
 
         if not nome_arquivo:
-            nome_arquivo = "EXECUÇÂO"
+            nome_arquivo = "EXECUÇÃO"
 
         if caminho_validado:
             # Atualiza o campo de entrada com o caminho validado
