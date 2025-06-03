@@ -108,3 +108,45 @@ def criar_pastas(diretorio):
     
     if not pastas_criadas and not pastas_existentes:
         messagebox.showinfo("Info", "Nenhuma operação realizada.")
+
+
+def exportar_log_tempo(nome_usuario, tempo_dados, pasta_destino=None):
+    """
+    Exporta os dados de tempo para um arquivo de log
+    
+    Args:
+        nome_usuario (str): Nome do usuário que realizou a operação
+        tempo_dados (list): Lista de strings com os dados de tempo
+        pasta_destino (str): Caminho da pasta onde salvar o log. Se None, usa Documents/PDFMaster_Logs
+    """
+    import datetime
+    
+    try:
+        # Se pasta_destino não foi especificada, cria pasta PDFMaster_Logs em Documents
+        if not pasta_destino:
+            # pasta_destino = r'G:\Meu Drive\17 - MODELOS\PROGRAMAS\Gerador de Requisições\app\PDFMaster_Logs'
+            pasta_destino = r'bd\PDFMaster_Logs'
+
+        # Cria a pasta se não existir
+        os.makedirs(pasta_destino, exist_ok=True)
+        
+        # Gera nome do arquivo com data/hora
+        data_hora = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+        nome_arquivo = f"log_{nome_usuario}_{data_hora}.txt"
+        caminho_arquivo = os.path.join(pasta_destino, nome_arquivo)
+        
+        # Escreve os dados no arquivo
+        with open(caminho_arquivo, 'w', encoding='utf-8') as f:
+            f.write(f"Log de operação PDFMaster\n")
+            f.write(f"Usuário: {nome_usuario}\n")
+            f.write(f"Data/Hora: {datetime.datetime.now().strftime('%d/%m/%Y %H:%M:%S')}\n")
+            f.write("-" * 50 + "\n")
+            for linha in tempo_dados:
+                f.write(f"{linha}\n")
+                
+        print(f"Log salvo em: {caminho_arquivo}")
+        return caminho_arquivo
+        
+    except Exception as e:
+        handle_error("exportar_log_tempo", f"Erro ao exportar log: {str(e)}", None)
+        return None

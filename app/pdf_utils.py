@@ -8,9 +8,9 @@ from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import A4
 
 try:
-    from .utils import handle_error
+    from .utils import handle_error, exportar_log_tempo
 except ImportError:
-    from utils import handle_error
+    from utils import handle_error, exportar_log_tempo
 
 def convert_to_pdf(pasta_imagens, output_pdf):
     """
@@ -138,7 +138,7 @@ def dividir_pdf_1(diretorio):
         handle_error("dividir_pdf_1", f"Erro ao dividir PDF: {str(e)}", None)
 
 
-def reduzir_tamanho_pdf(input_pdf, output_pdf, qualidade_imagem=30, nivel_compressao=7):
+def reduzir_tamanho_pdf(input_pdf, output_pdf, qualidade_imagem=30, nivel_compressao=7, callback=None):
     """
     Reduz o tamanho de um arquivo PDF comprimindo conteúdo e imagens.
     
@@ -151,6 +151,16 @@ def reduzir_tamanho_pdf(input_pdf, output_pdf, qualidade_imagem=30, nivel_compre
     Returns:
         bool: True se bem-sucedido, False caso contrário
     """
+    import time
+
+    def log(msg):
+        if callback:
+            callback(msg)
+        else:
+            print(msg)
+
+    tempo_inicio = time.time()
+    
     try:
         # Cria o writer e clona do reader
         writer = PdfWriter()
@@ -158,15 +168,18 @@ def reduzir_tamanho_pdf(input_pdf, output_pdf, qualidade_imagem=30, nivel_compre
         # Abre e lê o PDF original
         with open(input_pdf, "rb") as input_file:
             reader = PdfReader(input_file)
+            total_pages = len(reader.pages)
             
             # Processa cada página
             for i, page in enumerate(reader.pages):
+                log(f"    - Compactando página {i+1}/{total_pages}...")
+
                 # Adiciona a página ao writer PRIMEIRO
                 writer.add_page(page)
                 
                 # Agora processa a página que pertence ao writer
                 writer_page = writer.pages[i]
-                
+
                 # Comprime streams de conteúdo
                 try:
                     writer_page.compress_content_streams(level=nivel_compressao)
@@ -184,7 +197,7 @@ def reduzir_tamanho_pdf(input_pdf, output_pdf, qualidade_imagem=30, nivel_compre
                                 handle_error("reduzir_tamanho_pdf", f"Erro ao processar imagem na página {i+1}: {e}", None)
                 except Exception as e:
                     handle_error("reduzir_tamanho_pdf", f"Erro ao acessar imagens da página {i+1}: {e}", None)
-        
+                        
         # Aplica compressão adicional no writer
         try:
             writer.compress_identical_objects()
@@ -195,18 +208,22 @@ def reduzir_tamanho_pdf(input_pdf, output_pdf, qualidade_imagem=30, nivel_compre
         with open(output_pdf, "wb") as output_file:
             writer.write(output_file)
         
+        tempo_total = time.time() - tempo_inicio  # Calcula o tempo total
+        log(f"- Compactação finalizada.\nTempo de execução: {tempo_total:.2f} segundos")
         # PDF reduzido salvo com sucesso
         return True
         
     except FileNotFoundError:
+        log(f"• Erro: Arquivo não encontrado: {input_pdf}")
         handle_error("reduzir_tamanho_pdf", f"Arquivo não encontrado: {input_pdf}", None)
         return False
     except Exception as e:
+        log(f"• Erro ao compactar o PDF: {e}")
         handle_error("reduzir_tamanho_pdf", f"Erro ao processar PDF: {e}", None)
         return False
 
 
-def dividir_pdf_por_tamanho(caminho, caminho_saida, tamanho_mb_maximo=4.4):
+def dividir_pdf_por_tamanho(caminho, caminho_saida, tamanho_mb_maximo=4.4, nome_usuario=None, callback=None):
     """
     Divide um PDF em partes menores baseado no tamanho máximo especificado
     
@@ -214,8 +231,17 @@ def dividir_pdf_por_tamanho(caminho, caminho_saida, tamanho_mb_maximo=4.4):
         arquivo_pdf (str): Caminho do arquivo PDF a ser dividido
         tamanho_max_mb (int): Tamanho máximo em MB para cada parte
     """
+    import time
+    
+    def log(msg):
+        if callback:
+            callback(msg)
+        else:
+            print(msg)
+    
     try:
         mensagem_final = []
+        log_tempo = []  # Lista para armazenar dados de tempo
 
         # Determinar o caminho da pasta temporária na pasta Documentos
         temp_folder = os.path.join(os.path.expanduser('~'), 'Documents', 'temp_folder')
@@ -234,14 +260,20 @@ def dividir_pdf_por_tamanho(caminho, caminho_saida, tamanho_mb_maximo=4.4):
         tamanho_sem_compactar = round(os.path.getsize(caminho_temp) / 1048576, 2) # Converte para MB
 
         # Compactar o arquivo PDF antes de dividir
-        sucesso_compactacao = reduzir_tamanho_pdf(caminho_temp, caminho_temp)
+        log("- Compactando PDF antes de dividir...")
+        sucesso_compactacao = reduzir_tamanho_pdf(caminho_temp, caminho_temp, callback=log)
+
         if not sucesso_compactacao:
             # Excluir a pasta temporária criada
             if os.path.exists(temp_folder):
                 shutil.rmtree(temp_folder)
+                log("• Erro ao compactar o PDF. A pasta temporária foi excluída.")
+                messagebox.showerror("Erro", "Não foi possível compactar o PDF. Verifique o arquivo e tente novamente.")
             return
 
         tamanho_compactado = round(os.path.getsize(caminho_temp) / 1048576, 2)  # Converte para MB
+
+        log("- Iniciando divisão do PDF...")
 
         if tamanho_compactado > 4.9:
             # Atualizar o caminho para o arquivo temporário copiado
@@ -255,22 +287,27 @@ def dividir_pdf_por_tamanho(caminho, caminho_saida, tamanho_mb_maximo=4.4):
             def save_current_part():
                 nonlocal num_contagem, current_writer, temp_caminho
 
-                nome_arquivo = os.path.basename(caminho)
-
                 if len(current_writer.pages) > 0:
-                    with open(temp_caminho, "wb") as temp_file:
-                        current_writer.write(temp_file)
                     nome_arquivo_base = os.path.splitext(os.path.basename(caminho))[0]
-                    current_size_mb = os.path.getsize(temp_caminho) / 1048576
                     output_file_name = f"PT{num_contagem:02} {nome_arquivo_base}.pdf"
                     output_caminho = os.path.join(temp_folder, output_file_name)
-                    os.rename(temp_caminho, output_caminho)
-                    print(f"{output_file_name} criado com {len(current_writer.pages)} páginas, tamanho: {current_size_mb:.2f} MB")
+                    
+                    # Escrever diretamente no arquivo final ao invés de usar arquivo temporário
+                    with open(output_caminho, "wb") as output_file:
+                        current_writer.write(output_file)
+                    
+                    current_size_mb = os.path.getsize(output_caminho) / 1048576
+                    log(f"    - {output_file_name} criado com {len(current_writer.pages)} páginas, tamanho: {current_size_mb:.2f} MB")
                     mensagem_final.append(f"{output_file_name} criado com {len(current_writer.pages)} páginas, tamanho: {current_size_mb:.2f} MB\n")
+                    
                     num_contagem += 1
                     current_writer = PdfWriter()
+            
+            tempo_inicio_pdf = time.time()  # Início do processamento da página
+            tempo_total = 0
 
             for i in range(total_pages):
+                log(f"    - Dividindo página {i+1}/{total_pages}...")
                 current_writer.add_page(leitor_pdf.pages[i])
 
                 # Salva a parte atual temporariamente e verifica o tamanho do arquivo
@@ -278,19 +315,54 @@ def dividir_pdf_por_tamanho(caminho, caminho_saida, tamanho_mb_maximo=4.4):
                     current_writer.write(temp_caminho)
                     current_size_mb = os.path.getsize(temp_caminho) / 1048576
                     if current_size_mb >= tamanho_mb_maximo:
+                        log(f"    - Tamanho excedido: {current_size_mb:.2f} MB, salvando parte {num_contagem}")
                         save_current_part()
+
+                        tempo_pdf = time.time() - tempo_inicio_pdf  # Tempo gasto para processar o arquivo PDF
+                        tempo_total += tempo_pdf
+                
+                        log_msg = f"    - PDF {num_contagem-1}: {tempo_pdf:.2f} segundos"
+                        log(log_msg)
+                        log_tempo.append(log_msg)
+
+                        tempo_inicio_pdf = time.time()  # reinicia contagem para próxima parte
 
             # Salva a última parte, se houver páginas restantes
             if len(current_writer.pages) > 0:
+                tempo_inicio_pdf = time.time()  # Início do processamento da página
+                log(f"    - Salvando última parte {num_contagem} com {len(current_writer.pages)} páginas")
                 save_current_part()
+                tempo_pdf = time.time() - tempo_inicio_pdf  # Tempo gasto para processar o arquivo PDF
+                tempo_total += tempo_pdf
+
+                log_msg = f"    - PDF {num_contagem-1}: {tempo_pdf:.2f} segundos"
+                log(log_msg)
+                log_tempo.append(log_msg)
+
+            log(f"- Tempo total gasto para dividir o PDF: {tempo_total:.2f} segundos")
 
             # Mover os arquivos gerados de volta para a pasta original
             for file_name in os.listdir(temp_folder):
                 if file_name.startswith("PT"):
+                    log(f"- Movendo arquivo {file_name} para {caminho_saida}")
                     shutil.move(os.path.join(temp_folder, file_name), caminho_saida)
 
             # Excluir a pasta temporária
+            log("- Excluindo pasta temporária: " + temp_folder)
             shutil.rmtree(temp_folder)
+
+            TEMPO_MINIMO_LOG = 120
+            # Após processar todas as partes
+            if log_tempo and tempo_total >= TEMPO_MINIMO_LOG:  # Se houve operações de tempo registradas
+                log_tempo.append(f"Tempo total: {tempo_total:.2f} segundos")
+                log_tempo.append(f"Arquivo original: {os.path.basename(caminho)}")
+                log_tempo.append(f"Tamanho original: {tamanho_sem_compactar:.2f} MB")
+                log_tempo.append(f"Tamanho após compactação: {tamanho_compactado:.2f} MB")
+                
+                # Exporta o log
+                log_path = exportar_log_tempo(nome_usuario, log_tempo)
+                if log_path:
+                    mensagem_final.append(f"Log de tempo salvo em:\n{log_path}")
 
             # Calculando a redução de tamanho em KB e em porcentagem
             reducao_tamanho_mb = (tamanho_sem_compactar - tamanho_compactado)
@@ -302,6 +374,7 @@ def dividir_pdf_por_tamanho(caminho, caminho_saida, tamanho_mb_maximo=4.4):
                 f"Tamanho original: {tamanho_sem_compactar:.2f} MB",
                 f"Tamanho após compactação: {tamanho_compactado:.2f} MB",
                 f"Redução de tamanho: {reducao_tamanho_mb:.2f} MB ({percentual_reducao:.2f}%)"
+                f"\nTempo total para dividir o PDF: {tempo_total:.2f} segundos"
             ]
 
             messagebox.showinfo("Sucesso", f"Compactação e divisão de PDF concluída.\n\n{'\n'.join(mensagem_final)}\n\n{'\n'.join(informacao_compactacao)}")

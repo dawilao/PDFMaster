@@ -2,6 +2,7 @@ import customtkinter
 import os
 import webbrowser
 import traceback
+import threading
 
 try:
     from .utils import config_btn, switch_altera_modo_dark_light, print_dimensao, validar_caminho_ou_selecionar, criar_pastas, handle_error
@@ -13,7 +14,7 @@ except ImportError:
 class PDFMasterApp:
     __author__ = "Dawison Nascimento"
     __license__ = "MIT License"
-    __version__ = "1.1.0"
+    __version__ = "1.2.0"
 
     def __init__(self, nome_usuario=None):
         # Inicialização das variáveis globais como atributos da classe
@@ -36,6 +37,10 @@ class PDFMasterApp:
         self.label_switch = None
         self.espaco_centralizar_switch = 0
         self.tamanho_janela = "540x420"
+        self.debug_frame = None
+        self.debug_textbox = None
+        self.debug_expanded = False
+        self.icon_path = r'G:\Meu Drive\17 - MODELOS\PROGRAMAS\PDFMaster\app\PDFMaster_icon.ico'
         
         # Configurar modo de aparência
         customtkinter.set_appearance_mode("system")
@@ -50,6 +55,12 @@ class PDFMasterApp:
         self.janela.title("PDFMaster")
         
         self.janela.geometry(self.tamanho_janela)
+        self.janela.resizable(False, False)
+        
+        try:
+            self.janela.iconbitmap(self.icon_path)
+        except Exception as e:
+            print(f"Não foi possível carregar o ícone: {e}")
 
         # Título da janela com o nome do usuário
         titulo = customtkinter.CTkLabel(master=self.janela, text=f"Bem-vindo, {self.nome_usuario}!", font=("Segoe UI", 16, "bold"))
@@ -67,6 +78,73 @@ class PDFMasterApp:
         # Executar funções que precisam de delay
         self.janela.after(100, self.centraliza_switch)
         self.janela.after(2000, self.print_dimensao)
+
+    def create_debug_console(self):
+        """Cria o campo de debug expandível/minimizável"""
+        self.debug_frame = customtkinter.CTkFrame(master=self.janela, fg_color="transparent")
+        self.debug_frame.pack(fill="x", padx=10, pady=(0, 5))
+
+        self.btn_toggle_debug = customtkinter.CTkButton(
+            master=self.debug_frame,
+            text="Mostrar passo a passo",
+            command=self.toggle_debug_console,
+            width=180
+        )
+        self.btn_toggle_debug.pack(side="left", padx=(0, 10))
+
+        self.debug_textbox = customtkinter.CTkTextbox(
+            master=self.debug_frame,
+            height=80,
+            width=400,
+            state="disabled",
+            font=("Roboto", 10),
+        )
+        self.debug_textbox.pack(side="left", fill="x", expand=True)
+        self.debug_textbox.pack_forget()  # Inicialmente oculto
+
+    def show_debug_console(self):
+        """Exibe o campo de debug na tela"""
+        if not self.debug_frame:
+            self.create_debug_console()
+        else:
+            self.debug_frame.pack(fill="x", padx=10, pady=(0, 5))
+            self.btn_toggle_debug.pack(side="left", padx=(0, 10))
+        self.debug_expanded = False
+        self.debug_textbox.pack_forget()
+        self.btn_toggle_debug.configure(text="Mostrar passo a passo")
+
+    def hide_debug_console(self):
+        """Oculta o campo de debug da tela"""
+        if self.debug_frame:
+            self.debug_frame.pack_forget()
+
+    def toggle_debug_console(self):
+        """Expande ou minimiza o campo de debug"""
+        if self.debug_expanded:
+            self.debug_textbox.pack_forget()
+            self.btn_toggle_debug.configure(text="Mostrar passo a passo")
+        else:
+            self.debug_textbox.pack(side="left", fill="x", expand=True)
+            self.btn_toggle_debug.configure(text="Ocultar passo a passo")
+        self.debug_expanded = not self.debug_expanded
+
+    def append_debug(self, msg):
+        """Adiciona mensagem ao campo de debug"""
+        self.debug_textbox.configure(state="normal")
+        
+        # Se for mensagem de progresso de página, sobrescreve a última linha
+        if (
+            "Compactando página" in msg
+            or "Dividindo página" in msg
+        ):
+            # Remove a última linha antes de inserir a nova
+            self.debug_textbox.delete("end-2l", "end-1l")
+            self.debug_textbox.insert("end-1l", msg + "\n")
+        else:
+            self.debug_textbox.insert("end", msg + "\n")
+            self.debug_textbox.see("end")
+        
+        self.debug_textbox.configure(state="disabled")
 
     def create_aba_imagem_pdf(self):
         """Cria a aba 'Imagem para PDF'"""
@@ -305,9 +383,11 @@ class PDFMasterApp:
     def converter_imagens(self):
         """Converte imagens para PDF"""
         caminho = self.entry_caminho_pasta.get()
-        nome_arquivo = self.entry_nome_do_arquivo_pdf.get().upper().strip()
-
         caminho_validado = validar_caminho_ou_selecionar(caminho)
+
+        nome_arquivo = self.entry_nome_do_arquivo_pdf.get().upper().strip()
+        caracteres_invalidos = r'[<>:"/\\|?*]'  # Lista de caracteres inválidos em nomes de arquivo
+        nome_arquivo = re.sub(caracteres_invalidos, '_', nome_arquivo)
 
         if not nome_arquivo:
             nome_arquivo = "EXECUÇÂO"
@@ -360,15 +440,43 @@ class PDFMasterApp:
         if caminho_inicial.lower() == "jesus":
             from tkinter import messagebox
             messagebox.askquestion("Amém", "Será que você vai para o céu?")
-        
+
         # Seleciona o arquivo PDF
         arquivo = selecionar_arquivo_pdf(caminho_inicial)
 
+        # Só continua se o usuário selecionou um arquivo
+        if not arquivo:
+            return
+
         # Obtém o diretório de saída
         pasta_saida = os.path.dirname(arquivo)
-        
+
         if arquivo:
-            dividir_pdf_por_tamanho(arquivo, pasta_saida)
+            self.show_debug_console()  # Mostra o campo de debug
+            # Executa em thread separada
+            threading.Thread(
+                target=self._dividir_pdf_por_tamanho_thread,
+                args=(arquivo, pasta_saida),
+                daemon=True
+            ).start()
+
+    def _dividir_pdf_por_tamanho_thread(self, arquivo, pasta_saida):
+        try:
+            self.clear_debug()
+            self.append_debug("Iniciando divisão do PDF...")
+            dividir_pdf_por_tamanho(arquivo, pasta_saida, nome_usuario=self.nome_usuario, callback=self.append_debug)
+            self.append_debug("Divisão concluída!")
+        except Exception as e:
+            self.append_debug(f"Erro: {e}")
+        finally:
+            # Aguarda um pequeno tempo para o usuário ver a mensagem final, se quiser
+            self.janela.after(5000, self.hide_debug_console)
+
+    def clear_debug(self):
+        """Limpa o campo de debug"""
+        self.debug_textbox.configure(state="normal")
+        self.debug_textbox.delete("1.0", "end")
+        self.debug_textbox.configure(state="disabled")
 
     def toggle_ajuda(self):
         """Toggle para mostrar/esconder ajuda"""
@@ -436,6 +544,6 @@ def janela(nome_usuario):
     app = PDFMasterApp(nome_usuario)
     app.run()
 
-"""if __name__ == "__main__":
+if __name__ == "__main__":
     # Teste rápido da aplicação
-    janela("Usuário Teste")"""
+    janela("Usuário Teste")
