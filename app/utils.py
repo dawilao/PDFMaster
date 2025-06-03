@@ -124,8 +124,10 @@ def exportar_log_tempo(nome_usuario, tempo_dados, pasta_destino=None):
     try:
         # Se pasta_destino não foi especificada, cria pasta PDFMaster_Logs em Documents
         if not pasta_destino:
-            # pasta_destino = r'G:\Meu Drive\17 - MODELOS\PROGRAMAS\Gerador de Requisições\app\PDFMaster_Logs'
-            pasta_destino = r'bd\PDFMaster_Logs'
+            try:
+                pasta_destino = r'G:\Meu Drive\17 - MODELOS\PROGRAMAS\PDFMaster\logs'
+            except Exception:
+                pasta_destino = r'logs'
 
         # Cria a pasta se não existir
         os.makedirs(pasta_destino, exist_ok=True)

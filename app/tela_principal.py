@@ -15,7 +15,7 @@ except ImportError:
 class PDFMasterApp:
     __author__ = "Dawison Nascimento"
     __license__ = "MIT License"
-    __version__ = "1.2.0"
+    __version__ = "1.2.1"
 
     def __init__(self, nome_usuario=None):
         # Inicialização das variáveis globais como atributos da classe
@@ -545,6 +545,6 @@ def janela(nome_usuario):
     app = PDFMasterApp(nome_usuario)
     app.run()
 
-if __name__ == "__main__":
-    # Teste rápido da aplicação
-    janela("Usuário Teste")
+# Para testes diretos do módulo (desenvolvimento)
+# if __name__ == "__main__":
+#     janela("Usuário Teste")
