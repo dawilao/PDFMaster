@@ -15,7 +15,7 @@ except ImportError:
 class PDFMasterApp:
     __author__ = "Dawison Nascimento"
     __license__ = "MIT License"
-    __version__ = "1.2.1"
+    __version__ = "0.1.0"
 
     def __init__(self, nome_usuario=None):
         # Inicialização das variáveis globais como atributos da classe

@@ -12,7 +12,7 @@ Interface gráfica desenvolvida usando o customtkinter.
 <https://medium.com/@fareedkhandev/modern-gui-using-tkinter-12da0b983e22>
 """
 __author__ = "Dawison Nascimento"
-__status__ = "Stable"
+__status__ = "Beta"
 __license__ = "MIT license"
 __copyright__ = "Copyright (c) 2025 Dawison Nascimento"
 __maintainer__ = "Dawison Nascimento"
