@@ -48,6 +48,7 @@ class PDFMasterApp:
         
         # Criar e configurar a janela principal
         self.setup_main_window()
+        self.setup_bindings()
         
     def setup_main_window(self):
         """Configura a janela principal e todos os seus componentes"""
@@ -379,6 +380,22 @@ class PDFMasterApp:
                 self.frame_contatos_sair_centralizado, self.frame_contatos_sair_esquerda, 
                 self.switch_dark_light_mode, self.label_switch]
         # print_dimensao(lista)
+
+    def _on_enter_press(self, event):
+        """Ação ao pressionar Enter"""
+        try:
+            if self.tab_janela.get() == "Imagem para PDF":
+                self.converter_imagens()
+            elif self.tab_janela.get() == "Dividir PDF":
+                self.dividir_pdf_1_interface()
+            elif self.tab_janela.get() == "Dividir PDF por Tamanho":
+                self.dividir_pdf_por_tamanho_interface()
+        except Exception as e:
+            handle_error("_on_enter_press", e, self.janela)
+
+    def setup_bindings(self):
+        """Configura os bindings para eventos da janela"""
+        self.janela.bind("<Return>", self._on_enter_press)
 
     # Métodos de comando dos botões - integrados com utils e pdf_utils
     def converter_imagens(self):
