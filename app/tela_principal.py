@@ -15,7 +15,7 @@ except ImportError:
 class PDFMasterApp:
     __author__ = "Dawison Nascimento"
     __license__ = "MIT License"
-    __version__ = "0.1.0"
+    __version__ = "0.1.1"
 
     def __init__(self, nome_usuario=None):
         # Inicialização das variáveis globais como atributos da classe
@@ -387,7 +387,7 @@ class PDFMasterApp:
         caminho_validado = validar_caminho_ou_selecionar(caminho)
 
         nome_arquivo = self.entry_nome_do_arquivo_pdf.get().upper().strip()
-        caracteres_invalidos = r'[<>:"/\\|?*]'  # Lista de caracteres inválidos em nomes de arquivo
+        caracteres_invalidos = r'[<>:"/\\|?*\n\r]'  # Lista de caracteres inválidos em nomes de arquivo
         nome_arquivo = re.sub(caracteres_invalidos, '_', nome_arquivo)
 
         if not nome_arquivo:
@@ -401,6 +401,10 @@ class PDFMasterApp:
             # Converte as imagens
             import os
             output_pdf = os.path.join(caminho_validado, nome_arquivo + ".pdf")
+            
+            # Limpa o nome do arquivo removendo caracteres inválidos
+            output_pdf = output_pdf.replace('\n', '').replace('\r', '')
+            
             convert_to_pdf(caminho_validado, output_pdf)
         
         self.janela.focus()
@@ -546,5 +550,5 @@ def janela(nome_usuario):
     app.run()
 
 # Para testes diretos do módulo (desenvolvimento)
-# if __name__ == "__main__":
-#     janela("Usuário Teste")
+if __name__ == "__main__":
+    janela("Usuário Teste")
