@@ -491,8 +491,8 @@ class PDFMasterApp:
         except Exception as e:
             self.append_debug(f"Erro: {e}")
         finally:
-            # Aguarda um pequeno tempo para o usuário ver a mensagem final, se quiser
-            self.janela.after(5000, self.hide_debug_console)
+            # Aguarda um tempo para o usuário ver a mensagem final, se quiser
+            self.janela.after(15000, self.hide_debug_console)
 
     def clear_debug(self):
         """Limpa o campo de debug"""

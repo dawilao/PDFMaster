@@ -138,7 +138,7 @@ def dividir_pdf_1(diretorio):
         handle_error("dividir_pdf_1", f"Erro ao dividir PDF: {str(e)}", None)
 
 
-def reduzir_tamanho_pdf(input_pdf, output_pdf, qualidade_imagem=30, nivel_compressao=7, callback=None):
+def reduzir_tamanho_pdf(input_pdf, output_pdf, qualidade_imagem=30, nivel_compressao=7, callback=None, tempo_total=None):
     """
     Reduz o tamanho de um arquivo PDF comprimindo conteúdo e imagens.
     
@@ -152,6 +152,8 @@ def reduzir_tamanho_pdf(input_pdf, output_pdf, qualidade_imagem=30, nivel_compre
         bool: True se bem-sucedido, False caso contrário
     """
     import time
+
+    tempo_total = 0
 
     def log(msg):
         if callback:
@@ -211,7 +213,7 @@ def reduzir_tamanho_pdf(input_pdf, output_pdf, qualidade_imagem=30, nivel_compre
         tempo_total = time.time() - tempo_inicio  # Calcula o tempo total
         log(f"- Compactação finalizada.\nTempo de execução: {tempo_total:.2f} segundos")
         # PDF reduzido salvo com sucesso
-        return True
+        return True, tempo_total
         
     except FileNotFoundError:
         log(f"• Erro: Arquivo não encontrado: {input_pdf}")
@@ -232,6 +234,8 @@ def dividir_pdf_por_tamanho(caminho, caminho_saida, tamanho_mb_maximo=4.4, nome_
         tamanho_max_mb (int): Tamanho máximo em MB para cada parte
     """
     import time
+
+    lista_tempo_total = []
     
     def log(msg):
         if callback:
@@ -261,7 +265,9 @@ def dividir_pdf_por_tamanho(caminho, caminho_saida, tamanho_mb_maximo=4.4, nome_
 
         # Compactar o arquivo PDF antes de dividir
         log("- Compactando PDF antes de dividir...")
-        sucesso_compactacao = reduzir_tamanho_pdf(caminho_temp, caminho_temp, callback=log)
+        sucesso_compactacao, tempo_total_compactacao = reduzir_tamanho_pdf(caminho_temp, caminho_temp, callback=log)
+
+        lista_tempo_total.append(tempo_total_compactacao)
 
         if not sucesso_compactacao:
             # Excluir a pasta temporária criada
@@ -304,7 +310,6 @@ def dividir_pdf_por_tamanho(caminho, caminho_saida, tamanho_mb_maximo=4.4, nome_
                     current_writer = PdfWriter()
             
             tempo_inicio_pdf = time.time()  # Início do processamento da página
-            tempo_total = 0
 
             for i in range(total_pages):
                 log(f"    - Dividindo página {i+1}/{total_pages}...")
@@ -319,7 +324,7 @@ def dividir_pdf_por_tamanho(caminho, caminho_saida, tamanho_mb_maximo=4.4, nome_
                         save_current_part()
 
                         tempo_pdf = time.time() - tempo_inicio_pdf  # Tempo gasto para processar o arquivo PDF
-                        tempo_total += tempo_pdf
+                        lista_tempo_total.append(tempo_pdf)
                 
                         log_msg = f"    - PDF {num_contagem-1}: {tempo_pdf:.2f} segundos"
                         log(log_msg)
@@ -333,7 +338,13 @@ def dividir_pdf_por_tamanho(caminho, caminho_saida, tamanho_mb_maximo=4.4, nome_
                 log(f"    - Salvando última parte {num_contagem} com {len(current_writer.pages)} páginas")
                 save_current_part()
                 tempo_pdf = time.time() - tempo_inicio_pdf  # Tempo gasto para processar o arquivo PDF
-                tempo_total += tempo_pdf
+                lista_tempo_total.append(tempo_pdf)
+
+                tempo_total = 0
+                for tempo in lista_tempo_total:
+                    tempo_total += tempo
+
+                print(f"Tempo total = {tempo_total}")
 
                 log_msg = f"    - PDF {num_contagem-1}: {tempo_pdf:.2f} segundos"
                 log(log_msg)
@@ -356,6 +367,7 @@ def dividir_pdf_por_tamanho(caminho, caminho_saida, tamanho_mb_maximo=4.4, nome_
             if log_tempo and tempo_total >= TEMPO_MINIMO_LOG:  # Se houve operações de tempo registradas
                 log_tempo.append(f"Tempo total: {tempo_total:.2f} segundos")
                 log_tempo.append(f"Arquivo original: {os.path.basename(caminho)}")
+                log_tempo.append(f"Quantidade de páginas: {total_pages}")
                 log_tempo.append(f"Tamanho original: {tamanho_sem_compactar:.2f} MB")
                 log_tempo.append(f"Tamanho após compactação: {tamanho_compactado:.2f} MB")
                 
