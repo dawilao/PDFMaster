@@ -37,7 +37,7 @@ class PDFMasterApp:
         self.frame_switch = None
         self.label_switch = None
         self.espaco_centralizar_switch = 0
-        self.tamanho_janela = "540x420"
+        self.tamanho_janela = "540x430"
         self.debug_frame = None
         self.debug_textbox = None
         self.debug_expanded = False
@@ -57,7 +57,7 @@ class PDFMasterApp:
         self.janela.title("PDFMaster")
         
         self.janela.geometry(self.tamanho_janela)
-        self.janela.resizable(False, False)
+        self.janela.resizable(True, True)
         
         try:
             self.janela.iconbitmap(self.icon_path)
@@ -68,8 +68,8 @@ class PDFMasterApp:
         titulo = customtkinter.CTkLabel(master=self.janela, text=f"Bem-vindo, {self.nome_usuario}!", font=("Segoe UI", 16, "bold"))
         titulo.pack(pady=(10, 5))
      
-        self.tab_janela = customtkinter.CTkTabview(master=self.janela, border_width=2, height=35, width=520)
-        self.tab_janela.pack(pady=(0,5))  # Ajusta o padding e expande para preencher o espaço
+        self.tab_janela = customtkinter.CTkTabview(master=self.janela, border_width=2, height=40)
+        self.tab_janela.pack(pady=(0,5), padx=10, fill="x")  # Ajusta o padding e expande para preencher o espaço
 
         # Criar todas as abas
         self.create_aba_imagem_pdf()
@@ -84,7 +84,7 @@ class PDFMasterApp:
     def create_debug_console(self):
         """Cria o campo de debug expandível/minimizável"""
         self.debug_frame = customtkinter.CTkFrame(master=self.janela, fg_color="transparent")
-        self.debug_frame.pack(fill="x", padx=10, pady=(0, 5))
+        self.debug_frame.pack(fill="y", padx=10, pady=(0, 5))
 
         self.btn_toggle_debug = customtkinter.CTkButton(
             master=self.debug_frame,
@@ -96,7 +96,7 @@ class PDFMasterApp:
 
         self.debug_textbox = customtkinter.CTkTextbox(
             master=self.debug_frame,
-            height=80,
+            height=130,
             width=400,
             state="disabled",
             font=("Roboto", 10),
