@@ -2,6 +2,7 @@ import shutil
 import os
 import glob
 from pypdf import PdfReader, PdfWriter
+from pypdf.errors import PdfStreamError
 from tkinter import filedialog, messagebox
 from PIL import Image
 from reportlab.pdfgen import canvas
@@ -134,6 +135,9 @@ def dividir_pdf_1(diretorio):
             
             messagebox.showinfo("Sucesso", "Divisão de PDF concluída.")
             
+    except PdfStreamError:
+        msg_erro = "O arquivo selecionado não é um PDF válido ou está corrompido.\nPor favor, verifique o arquivo e tente novamente."
+        handle_error("dividir_pdf_1", msg_erro, None)
     except Exception as e:
         handle_error("dividir_pdf_1", f"Erro ao dividir PDF: {str(e)}", None)
 
@@ -218,11 +222,15 @@ def reduzir_tamanho_pdf(input_pdf, output_pdf, qualidade_imagem=30, nivel_compre
     except FileNotFoundError:
         log(f"• Erro: Arquivo não encontrado: {input_pdf}")
         handle_error("reduzir_tamanho_pdf", f"Arquivo não encontrado: {input_pdf}", None)
-        return False
+        return False, 0
+    except PdfStreamError:
+        msg_erro = "O arquivo selecionado não é um PDF válido ou está corrompido.\nPor favor, verifique o arquivo e tente novamente."
+        handle_error("Compactar PDF", msg_erro, None)
+        return False, 0
     except Exception as e:
         log(f"• Erro ao compactar o PDF: {e}")
-        handle_error("reduzir_tamanho_pdf", f"Erro ao processar PDF: {e}", None)
-        return False
+        handle_error("Compactar PDF", f": {e}", None)
+        return False, 0
 
 
 def dividir_pdf_por_tamanho(caminho, caminho_saida, tamanho_mb_maximo=4.4, nome_usuario=None, callback=None):
@@ -274,7 +282,7 @@ def dividir_pdf_por_tamanho(caminho, caminho_saida, tamanho_mb_maximo=4.4, nome_
             if os.path.exists(temp_folder):
                 shutil.rmtree(temp_folder)
                 log("• Erro ao compactar o PDF. A pasta temporária foi excluída.")
-                messagebox.showerror("Erro", "Não foi possível compactar o PDF. Verifique o arquivo e tente novamente.")
+                print("Erro", "Não foi possível compactar o PDF. Verifique o arquivo e tente novamente.")
             return
 
         tamanho_compactado = round(os.path.getsize(caminho_temp) / 1048576, 2)  # Converte para MB
@@ -414,9 +422,14 @@ def dividir_pdf_por_tamanho(caminho, caminho_saida, tamanho_mb_maximo=4.4, nome_
             ]
 
             messagebox.showinfo("Sucesso", f"Compressão de PDF concluída.\n\n{'\n'.join(mensagem_final)}")
-        
+    
+    except PdfStreamError:
+        msg_erro = "O arquivo selecionado não é um PDF válido ou está corrompido.\nPor favor, verifique o arquivo e tente novamente."
+        handle_error("Dividir PDF por Tamanho", msg_erro, None)
+        return
     except Exception as e:
-        handle_error("dividir_pdf_por_tamanho", f"Erro ao dividir PDF por tamanho: {str(e)}", None)
+        handle_error("Dividir PDF por Tamanho", f": {str(e)}", None)
+        return
 
 
 def selecionar_arquivo_pdf(caminho_inicial=""):

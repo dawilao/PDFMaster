@@ -1,15 +1,16 @@
 import customtkinter
 import os
+from tkinter import messagebox
 import webbrowser
 import traceback
 import threading
 import re
 
 try:
-    from .utils import config_btn, switch_altera_modo_dark_light, print_dimensao, validar_caminho_ou_selecionar, criar_pastas, handle_error
+    from .utils import config_btn, switch_altera_modo_dark_light, print_dimensao, validar_caminho_ou_selecionar, criar_pastas, handle_error, IconManager, Tooltip
     from .pdf_utils import convert_to_pdf, dividir_pdf_1, dividir_pdf_por_tamanho, selecionar_arquivo_pdf
 except ImportError:
-    from utils import config_btn, switch_altera_modo_dark_light, print_dimensao, validar_caminho_ou_selecionar, criar_pastas, handle_error
+    from utils import config_btn, switch_altera_modo_dark_light, print_dimensao, validar_caminho_ou_selecionar, criar_pastas, handle_error, IconManager, Tooltip
     from pdf_utils import convert_to_pdf, dividir_pdf_1, dividir_pdf_por_tamanho, selecionar_arquivo_pdf
 
 class PDFMasterApp:
@@ -41,7 +42,9 @@ class PDFMasterApp:
         self.debug_frame = None
         self.debug_textbox = None
         self.debug_expanded = False
-        self.icon_path = r'G:\Meu Drive\17 - MODELOS\PROGRAMAS\PDFMaster\app\PDFMaster_icon.ico'
+        self.icone = IconManager()
+
+        self.thread_rodando = False
         
         # Configurar modo de aparência
         customtkinter.set_appearance_mode("system")
@@ -58,11 +61,8 @@ class PDFMasterApp:
         
         self.janela.geometry(self.tamanho_janela)
         self.janela.resizable(True, True)
-        
-        try:
-            self.janela.iconbitmap(self.icon_path)
-        except Exception as e:
-            print(f"Não foi possível carregar o ícone: {e}")
+
+        self.icone.set_window_icon(self.janela)
 
         # Título da janela com o nome do usuário
         titulo = customtkinter.CTkLabel(master=self.janela, text=f"Bem-vindo, {self.nome_usuario}!", font=("Segoe UI", 16, "bold"))
@@ -248,10 +248,11 @@ class PDFMasterApp:
 
         # Botão para abrir o caminho especificado
         self.btn_abrir_pasta_dividir_pdf_por_tamanho = customtkinter.CTkButton(master=frame_aba_dividir_pdf_por_tamanho, 
-                                                  text="Converter PDF por Tamanho: até 5 MB", 
+                                                  text="Dividir PDF por Tamanho: até 5 MB", 
                                                   command=self.dividir_pdf_por_tamanho_interface)
         self.btn_abrir_pasta_dividir_pdf_por_tamanho.pack(pady=10)
         config_btn(self.btn_abrir_pasta_dividir_pdf_por_tamanho)
+        Tooltip(self.btn_abrir_pasta_dividir_pdf_por_tamanho, "Aguarde a divisão terminar para usar este botão.")
 
     def create_frame_inferior(self):
         """Cria o frame inferior com botões de ajuda, suporte e sair"""
@@ -445,7 +446,6 @@ class PDFMasterApp:
         
         # Verifica por easter egg
         if caminho_inicial.lower() == "jesus":
-            from tkinter import messagebox
             messagebox.askquestion("Amém", "Será que você vai para o céu?")
 
         # Seleciona o arquivo PDF
@@ -456,11 +456,17 @@ class PDFMasterApp:
 
     def dividir_pdf_por_tamanho_interface(self):
         """Divide PDF por tamanho"""
+        # Impede múltiplas execuções simultâneas
+        if self.thread_rodando:
+            messagebox.showinfo("Atenção", "Já existe uma divisão em andamento. Aguarde a finalização.")
+            return
+        self.thread_rodando = True  # Marca que a thread está rodando
+        self.btn_abrir_pasta_dividir_pdf_por_tamanho.configure(state="disabled")  # Desativa botão
+
         caminho_inicial = self.entry_caminho_pasta_dividir_por_tamanho.get()
 
         # Verifica por easter egg
         if caminho_inicial.lower() == "jesus":
-            from tkinter import messagebox
             messagebox.askquestion("Amém", "Será que você vai para o céu?")
 
         # Seleciona o arquivo PDF
@@ -468,19 +474,60 @@ class PDFMasterApp:
 
         # Só continua se o usuário selecionou um arquivo
         if not arquivo:
+            self.thread_rodando = False  # Libera caso o usuário cancele a seleção
+            self.btn_abrir_pasta_dividir_pdf_por_tamanho.configure(state="normal")  # Reativa botão
             return
 
         # Obtém o diretório de saída
         pasta_saida = os.path.dirname(arquivo)
 
-        if arquivo:
-            self.show_debug_console()  # Mostra o campo de debug
-            # Executa em thread separada
-            threading.Thread(
-                target=self._dividir_pdf_por_tamanho_thread,
-                args=(arquivo, pasta_saida),
-                daemon=True
-            ).start()
+        # Verifica se na pasta já possui algum arquivo compactado (que possui PT01 no nome)
+        padrao_pt = re.compile(r"^pt\d{2}.*\.pdf$", re.IGNORECASE)
+        existe_compactado = any(padrao_pt.search(nome) for nome in os.listdir(pasta_saida))
+
+        if existe_compactado:
+            verificacao = messagebox.askyesno(
+                "Arquivo compactado já existente",
+                (
+                    "Já existem arquivos compactados nesta pasta.\n"
+                    "Se você continuar, esses arquivos serão substituídos.\n"
+                    "Deseja prosseguir?"
+                )
+            )
+
+            if not verificacao:
+                self.thread_rodando = False
+                self.btn_abrir_pasta_dividir_pdf_por_tamanho.configure(state="normal")
+                return
+            
+            # Remove arquivos PTxx
+            arquivos_para_excluir = [
+                f for f in os.listdir(pasta_saida) if padrao_pt.search(f)
+            ]
+
+            for arquivos_com_PTxx in arquivos_para_excluir:
+                caminho_arquivo = os.path.join(pasta_saida, arquivos_com_PTxx)
+                try:
+                    os.remove(caminho_arquivo)
+                    print(f"Arquivo removido: {arquivos_com_PTxx}")
+                except Exception as e:
+                    print(f"Erro ao remover {arquivos_com_PTxx}: {e}")
+
+        self.show_debug_console()  # Mostra o campo de debug
+
+        def thread_target():
+            try:
+                self._dividir_pdf_por_tamanho_thread(arquivo, pasta_saida)
+            finally:
+                self.thread_rodando = False  # Libera a flag ao fim da thread
+                self.btn_abrir_pasta_dividir_pdf_por_tamanho.configure(
+                    state="normal",
+                    fg_color=("#3a7ebf", "#1f538d"),
+                    hover_color=("#325882", "#14375e"),
+                )
+
+        # Executa em thread separada
+        threading.Thread(target=thread_target, daemon=True).start()
 
     def _dividir_pdf_por_tamanho_thread(self, arquivo, pasta_saida):
         try:
@@ -533,7 +580,6 @@ class PDFMasterApp:
             instrucoes = self._get_instrucoes()
             info_versao = self._get_info_versao()
             mensagem = f"{instrucoes}\n\n{info_versao}"
-            from tkinter import messagebox
             messagebox.showinfo("Sobre o Programa", mensagem)
         except Exception as e:
             handle_error("versao", e, self.janela)

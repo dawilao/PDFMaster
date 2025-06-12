@@ -1,8 +1,73 @@
 import os
+from os.path import exists
 import tkinter as tk
 from tkinter import filedialog, messagebox, scrolledtext, Toplevel, Button, Label
 import customtkinter
 import traceback
+
+
+class Tooltip:
+    def __init__(self, widget, text):
+        self.widget = widget
+        self.text = text
+        self.tooltip_window = None
+        self.widget.bind("<Enter>", self.on_enter)
+        self.widget.bind("<Leave>", self.on_leave)
+
+    def on_enter(self, event=None):
+        # Verifica se o botão está desabilitado antes de mostrar
+        if self.widget.cget("state") == "disabled":
+            self.show_tooltip()
+
+    def on_leave(self, event=None):
+        self.hide_tooltip()
+
+    def show_tooltip(self):
+        if self.tooltip_window or not self.text:
+            return
+        x = self.widget.winfo_rootx() + 50
+        y = self.widget.winfo_rooty() + 20
+        self.tooltip_window = tw = tk.Toplevel(self.widget)
+        tw.wm_overrideredirect(True)  # Remove a borda da janela
+        tw.wm_geometry(f"+{x}+{y}")
+        label = tk.Label(
+            tw, text=f" {self.text} ",
+            background="#e3e3e3",
+            foreground="black",
+            relief="solid",
+            borderwidth=1,
+            font=("Segoe UI", 9)
+        )
+        label.pack()
+
+    def hide_tooltip(self):
+        if self.tooltip_window:
+            self.tooltip_window.destroy()
+            self.tooltip_window = None
+
+
+class IconManager:
+    """Gerencia o carregamento de ícones da aplicação."""
+    
+    def __init__(self):
+        self.icon_paths = [
+            r'app\assets\PDFMaster_icon.ico',
+            r'G:\Meu Drive\17 - MODELOS\PROGRAMAS\PDFMaster\app\PDFMaster_icon.ico',
+        ]
+
+    def set_window_icon(self, window):
+        """Define o ícone da janela usando o primeiro caminho válido encontrado."""
+        for path in self.icon_paths:
+            if exists(path):
+                try:
+                    window.iconbitmap(path)
+                    return  # Se conseguiu definir o ícone, encerra a função
+                except Exception as e:
+                    print(f"Erro ao carregar o ícone de {path}: {e}")
+                    continue  # Tenta o próximo caminho se houver erro
+        
+        print("Não foi possível carregar o ícone de nenhum dos caminhos disponíveis")
+
 
 def handle_error(funcao, erro, root):
     """Trata erros de forma centralizada com opção de expandir traceback"""

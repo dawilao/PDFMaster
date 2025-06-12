@@ -16,7 +16,7 @@ import customtkinter as ctk
 
 from .componentes import CustomEntry
 from bd.utils_bd import DatabaseManager
-from .utils import handle_error
+from .utils import handle_error, IconManager
 
 
 class LoginManager:
@@ -26,7 +26,7 @@ class LoginManager:
         self.db_manager = DatabaseManager()
         self.root_login = None
         self.janela_alterar = None
-        self.icon_path = r'G:\Meu Drive\17 - MODELOS\PROGRAMAS\PDFMaster\app\PDFMaster_icon.ico'
+        self.icone = IconManager()
     
     def validacao_login(self, root_login: ctk.CTk, entry_usuario: CustomEntry, entry_senha: CustomEntry):
         """
@@ -168,10 +168,7 @@ class LoginManager:
         self.janela_alterar.geometry("300x400")
         ctk.set_default_color_theme("blue")
 
-        try:
-            self.janela_alterar.iconbitmap(self.icon_path)
-        except Exception as e:
-            print(f"Não foi possível carregar o ícone: {e}")
+        self.icone.set_window_icon(self.janela_alterar)
 
         """# Título da janela
         titulo = ctk.CTkLabel(master=self.janela_alterar, text="PDFMaster\nAlterar senha", font=("Segoe UI", 32, "bold"))
@@ -253,11 +250,8 @@ class LoginManager:
         self.root_login.title("PDFMaster - Login")
         self.root_login.geometry("300x380")
         ctk.set_default_color_theme("blue")
-        
-        try:
-            self.root_login.iconbitmap(self.icon_path)
-        except Exception as e:
-            print(f"Não foi possível carregar o ícone: {e}")
+
+        self.icone.set_window_icon(self.root_login)
 
         # Título da janela
         titulo = ctk.CTkLabel(master=self.root_login, text="PDFMaster", font=("Segoe UI", 32, "bold"))
