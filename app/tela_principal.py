@@ -517,7 +517,26 @@ class PDFMasterApp:
             self.thread_rodando = False  # Libera caso o usuário cancele a seleção
             self.btn_abrir_pasta_dividir_pdf_por_tamanho.after(0, self.restaurar_botao)  # Reativa botão
             return
-        
+
+        # Verifica o tamanho do arquivo
+        tamanho_arquivo = os.path.getsize(arquivo)
+        tamanho_limite = 4.9 * 1024*1024
+
+        if tamanho_arquivo < tamanho_limite:
+            tamanho_mb = tamanho_arquivo / (1024*1024)  # Converte para MB
+            prosseguir = messagebox.askyesno(
+                "Arquivo pequeno",
+                (
+                    f"O arquivo selecionado possui {tamanho_mb:.2f} MB, "
+                    f"que é menor que 5 MB.\n\n"
+                    f"Deseja prosseguir mesmo assim?"
+                )
+            )
+            if not prosseguir:
+                self.thread_rodando = False
+                self.btn_abrir_pasta_dividir_pdf_por_tamanho.after(0, self.restaurar_botao)  # Reativa botão
+                return
+
         # Obtém o diretório de saída
         pasta_saida = os.path.dirname(arquivo)
         
