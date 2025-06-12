@@ -16,7 +16,7 @@ except ImportError:
 class PDFMasterApp:
     __author__ = "Dawison Nascimento"
     __license__ = "MIT License"
-    __version__ = "0.1.1"
+    __version__ = "1.0.0"
 
     def __init__(self, nome_usuario=None):
         # Inicialização das variáveis globais como atributos da classe
@@ -403,28 +403,28 @@ class PDFMasterApp:
             # Atualiza o campo de entrada com o caminho validado
             self.entry_caminho_pasta.delete(0, 'end')
             self.entry_caminho_pasta.insert(0, caminho_validado)
-            
+
             # Converte as imagens
             import os
             output_pdf = os.path.join(caminho_validado, nome_arquivo + ".pdf")
-            
+
             # Limpa o nome do arquivo removendo caracteres inválidos
             output_pdf = output_pdf.replace('\n', '').replace('\r', '')
-            
+
             convert_to_pdf(caminho_validado, output_pdf)
-        
+
         self.janela.focus()
 
     def criar_pastas_interface(self):
         """Cria pastas padrão"""
         caminho = self.entry_caminho_pasta.get()
         caminho_validado = validar_caminho_ou_selecionar(caminho)
-        
+
         if caminho_validado:
             # Atualiza o campo de entrada com o caminho validado
             self.entry_caminho_pasta.delete(0, 'end')
             self.entry_caminho_pasta.insert(0, caminho_validado)
-            
+
             # Cria as pastas
             criar_pastas(caminho_validado)
 
@@ -439,12 +439,12 @@ class PDFMasterApp:
 
         caminho_inicial = self.entry_caminho_dividir_pdf_1.get()
         caminho_inicial = caminho_inicial.replace('"', '').replace("'", "").strip()
-    
+
         # Verifica por easter egg
         self._easter_egg(caminho_inicial)
-        
+
         arquivo = None
-        
+
         # Verifica o tipo do caminho
         if caminho_inicial:
             if os.path.isfile(caminho_inicial):
@@ -459,21 +459,56 @@ class PDFMasterApp:
         else:
             # Caminho vazio - abre seletor na pasta atual
             arquivo = selecionar_arquivo_pdf()
-        
+
         # Verifica se foi selecionado um arquivo
         if not arquivo:
             self.thread_rodando = False  # Libera caso o usuário cancele a seleção
             self.btn_dividir_pdf.after(0, self.restaurar_botao)  # Reativa botão
             print("Nenhum arquivo selecionado.")
             return
-        
+
+        # Validação para verificar se já existem arquivos divididos
+        try:
+            # Obtém o nome do arquivo sem extensão e a pasta onde será salvo
+            nome_arquivo = os.path.splitext(os.path.basename(arquivo))[0]
+            pasta_saida = os.path.dirname(arquivo)
+            
+            # Cria o padrão regex para identificar arquivos divididos
+            # Padrão: {nome_arquivo}_{numero}.pdf
+            padrao_dividido = re.compile(rf"^{re.escape(nome_arquivo)}_\d+\.pdf$", re.IGNORECASE)
+            
+            # Verifica se na pasta já existem arquivos divididos
+            existe_dividido = any(padrao_dividido.search(nome) for nome in os.listdir(pasta_saida))
+            
+            if existe_dividido:
+                messagebox.showinfo(
+                    "Arquivos divididos já encontrados.",
+                    (
+                        f"Existem arquivos divididos do documento '{nome_arquivo}' nesta pasta.\n\n"
+                        "Para continuar, você pode:\n"
+                        "    1. Excluir os arquivos existentes e tentar novamente.\n"
+                        "    2. Selecionar outro arquivo para dividir.\n\n"
+                        "Operação cancelada."   
+                    )
+                )
+                self.thread_rodando = False
+                self.btn_dividir_pdf.after(0, self.restaurar_botao)
+                return
+                    
+        except Exception as e:
+            # Em caso de erro na validação, permite continuar mas mostra aviso
+            print(f"Erro na validação de arquivos existentes: {e}")
+
         def thread_target():
             try:
                 dividir_pdf_1(arquivo)
             finally:
                 self.thread_rodando = False  # Libera a flag ao fim da thread
                 self.btn_dividir_pdf.after(0, self.restaurar_botao)
-        
+                self.entry_caminho_dividir_pdf_1.delete(0, 'end')
+                self.entry_caminho_dividir_pdf_1.focus_set()  # Garante que tem foco
+                self.janela.focus()
+
         # Atualiza o campo de entrada com o caminho validado
         self.entry_caminho_dividir_pdf_1.delete(0, 'end')
         self.entry_caminho_dividir_pdf_1.insert(0,arquivo)
@@ -540,8 +575,9 @@ class PDFMasterApp:
         # Obtém o diretório de saída
         pasta_saida = os.path.dirname(arquivo)
         
-        # Verifica se na pasta já possui algum arquivo compactado (que possui PT01 no nome)
-        padrao_pt = re.compile(r"^pt\d{2}.*\.pdf$", re.IGNORECASE)
+        # Verifica se na pasta já possui algum arquivo compactado (que possui PTxx no nome) do arquivo atual
+        nome_arquivo = os.path.splitext(os.path.basename(arquivo))[0]
+        padrao_pt = re.compile(rf"^pt\d{{2}}\s+{re.escape(nome_arquivo)}\.pdf$", re.IGNORECASE)
         existe_compactado = any(padrao_pt.search(nome) for nome in os.listdir(pasta_saida))
         
         if existe_compactado:
@@ -569,7 +605,7 @@ class PDFMasterApp:
                     print(f"Arquivo removido: {arquivos_com_PTxx}")
                 except Exception as e:
                     print(f"Erro ao remover {arquivos_com_PTxx}: {e}")
-        
+
         self.show_debug_console()  # Mostra o campo de debug
         
         def thread_target():
@@ -578,14 +614,16 @@ class PDFMasterApp:
             finally:
                 self.thread_rodando = False  # Libera a flag ao fim da thread
                 self.btn_abrir_pasta_dividir_pdf_por_tamanho.after(0, self.restaurar_botao)
+                self.entry_caminho_pasta_dividir_por_tamanho.delete(0, 'end')
+                self.entry_caminho_pasta_dividir_por_tamanho.focus_set()  # Garante que tem foco
+                self.janela.focus()  # Remove o foco
 
         # Atualiza o campo de entrada com o caminho validado
         self.entry_caminho_pasta_dividir_por_tamanho.delete(0, 'end')
         self.entry_caminho_pasta_dividir_por_tamanho.insert(0,arquivo)
 
         # Inicia a thread (assumindo que você tem essa parte implementada)
-        thread = threading.Thread(target=thread_target)
-        thread.start()
+        thread = threading.Thread(target=thread_target).start()
 
     def bloqueia_botão(self):
         """Bloqueia os botões"""

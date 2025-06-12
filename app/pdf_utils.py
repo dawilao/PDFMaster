@@ -143,6 +143,10 @@ def dividir_pdf_1(diretorio):
         msg_erro = "O arquivo PDF está sendo utilizado por outro programa.\nFeche o arquivo e tente novamente."
         handle_error("Dividir PDF", msg_erro, None)
         return
+    except FileNotFoundError:
+        msg_erro = "O arquivo selecionado não foi encontrado.\nVerifique se o arquivo ainda existe no local especificado."
+        handle_error("Dividir PDF", msg_erro, None)
+        return
     except Exception as e:
         handle_error("Dividir PDF", f": {str(e)}", None)
         return
@@ -226,8 +230,9 @@ def reduzir_tamanho_pdf(input_pdf, output_pdf, qualidade_imagem=30, nivel_compre
         return True, tempo_total
         
     except FileNotFoundError:
-        log(f"• Erro: Arquivo não encontrado: {input_pdf}")
-        handle_error("Compactar PDF", f"Arquivo não encontrado: {input_pdf}", None)
+        msg_erro = f"Arquivo não encontrado: {input_pdf}\nVerifique se o arquivo ainda existe no local especificado."
+        log(f"• Erro: {msg_erro}")
+        handle_error("Compactar PDF", msg_erro, None)
         return False, 0
     except PdfStreamError:
         msg_erro = "O arquivo selecionado não é um PDF válido ou está corrompido.\nPor favor, verifique o arquivo e tente novamente."
@@ -439,6 +444,10 @@ def dividir_pdf_por_tamanho(caminho, caminho_saida, tamanho_mb_maximo=4.4, nome_
         return
     except PermissionError:
         msg_erro = "O arquivo PDF está sendo utilizado por outro programa.\nFeche o arquivo e tente novamente."
+        handle_error("Dividir PDF por Tamanho", msg_erro, None)
+        return
+    except FileNotFoundError:
+        msg_erro = "O arquivo selecionado não foi encontrado.\nVerifique se o arquivo ainda existe no local especificado."
         handle_error("Dividir PDF por Tamanho", msg_erro, None)
         return
     except Exception as e:

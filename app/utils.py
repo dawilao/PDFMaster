@@ -163,8 +163,10 @@ def print_dimensao(componentes_list):
 
 def validar_caminho_ou_selecionar(caminho):
     """
-    Valida se o caminho existe ou abre o seletor de diretório.
+    Formata e valida se o caminho existe ou abre o seletor de diretório.
     """
+    caminho = caminho.replace('"', '').replace("'", "").strip()
+
     if os.path.exists(caminho):
         return caminho
     else:
