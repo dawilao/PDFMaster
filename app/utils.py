@@ -7,7 +7,31 @@ import traceback
 
 
 class Tooltip:
+    '''
+    A classe Tooltip fornece uma funcionalidade de dica flutuante (tooltip) para widgets do Tkinter. 
+
+    Ela exibe automaticamente uma pequena janela com texto informativo quando o cursor do mouse passa sobre o widget associado, mas apenas se o widget estiver desabilitado (`state="disabled"`). Isso é útil, por exemplo, para explicar por que um botão está desativado.
+
+    A janela de tooltip é personalizada com uma borda sólida, cor de fundo clara e aparece próxima ao widget. O tooltip desaparece assim que o cursor sai da área do widget.
+
+    Parâmetros:
+    - widget: o widget do Tkinter ao qual o tooltip será associado.
+    - text: o texto que será exibido na dica flutuante.
+
+    Métodos:
+    - on_enter: chamado ao passar o mouse sobre o widget, verifica se ele está desabilitado e mostra o tooltip.
+    - on_leave: chamado ao sair do widget, oculta o tooltip.
+    - show_tooltip: cria e exibe a janela da dica flutuante.
+    - hide_tooltip: destrói a janela da dica flutuante, se ela existir.
+    '''
     def __init__(self, widget, text):
+        """
+        Inicializa a instância da Tooltip e associa eventos ao widget.
+
+        Parâmetros:
+        - widget: Widget do Tkinter ao qual a tooltip será anexada.
+        - text: Texto que será exibido na dica flutuante quando o mouse estiver sobre o widget.
+        """
         self.widget = widget
         self.text = text
         self.tooltip_window = None
@@ -15,14 +39,26 @@ class Tooltip:
         self.widget.bind("<Leave>", self.on_leave)
 
     def on_enter(self, event=None):
+        """
+        Evento acionado quando o cursor entra na área do widget.
+        Se o widget estiver desabilitado (state="disabled"), exibe a tooltip.
+        """
         # Verifica se o botão está desabilitado antes de mostrar
         if self.widget.cget("state") == "disabled":
             self.show_tooltip()
 
     def on_leave(self, event=None):
+        """
+        Evento acionado quando o cursor sai da área do widget.
+        Oculta a tooltip, se estiver visível.
+        """
         self.hide_tooltip()
 
     def show_tooltip(self):
+        """
+        Cria e exibe a janela da tooltip próxima ao widget.
+        Evita criar a tooltip se ela já estiver visível ou se o texto estiver vazio.
+        """
         if self.tooltip_window or not self.text:
             return
         x = self.widget.winfo_rootx() + 50
@@ -41,6 +77,7 @@ class Tooltip:
         label.pack()
 
     def hide_tooltip(self):
+        """Oculta e destrói a janela da tooltip, se ela estiver visível."""
         if self.tooltip_window:
             self.tooltip_window.destroy()
             self.tooltip_window = None

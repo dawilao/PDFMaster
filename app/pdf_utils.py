@@ -137,9 +137,15 @@ def dividir_pdf_1(diretorio):
             
     except PdfStreamError:
         msg_erro = "O arquivo selecionado não é um PDF válido ou está corrompido.\nPor favor, verifique o arquivo e tente novamente."
-        handle_error("dividir_pdf_1", msg_erro, None)
+        handle_error("Dividir PDF", msg_erro, None)
+        return
+    except PermissionError:
+        msg_erro = "O arquivo PDF está sendo utilizado por outro programa.\nFeche o arquivo e tente novamente."
+        handle_error("Dividir PDF", msg_erro, None)
+        return
     except Exception as e:
-        handle_error("dividir_pdf_1", f"Erro ao dividir PDF: {str(e)}", None)
+        handle_error("Dividir PDF", f": {str(e)}", None)
+        return
 
 
 def reduzir_tamanho_pdf(input_pdf, output_pdf, qualidade_imagem=30, nivel_compressao=7, callback=None, tempo_total=None):
@@ -209,11 +215,11 @@ def reduzir_tamanho_pdf(input_pdf, output_pdf, qualidade_imagem=30, nivel_compre
             writer.compress_identical_objects()
         except Exception as e:
             handle_error("reduzir_tamanho_pdf", f"Erro ao comprimir objetos idênticos: {e}", None)
-        
+
         # Salva o arquivo
         with open(output_pdf, "wb") as output_file:
             writer.write(output_file)
-        
+
         tempo_total = time.time() - tempo_inicio  # Calcula o tempo total
         log(f"- Compactação finalizada.\nTempo de execução: {tempo_total:.2f} segundos")
         # PDF reduzido salvo com sucesso
@@ -221,10 +227,14 @@ def reduzir_tamanho_pdf(input_pdf, output_pdf, qualidade_imagem=30, nivel_compre
         
     except FileNotFoundError:
         log(f"• Erro: Arquivo não encontrado: {input_pdf}")
-        handle_error("reduzir_tamanho_pdf", f"Arquivo não encontrado: {input_pdf}", None)
+        handle_error("Compactar PDF", f"Arquivo não encontrado: {input_pdf}", None)
         return False, 0
     except PdfStreamError:
         msg_erro = "O arquivo selecionado não é um PDF válido ou está corrompido.\nPor favor, verifique o arquivo e tente novamente."
+        handle_error("Compactar PDF", msg_erro, None)
+        return False, 0
+    except PermissionError:
+        msg_erro = "O arquivo PDF está sendo utilizado por outro programa.\nFeche o arquivo e tente novamente."
         handle_error("Compactar PDF", msg_erro, None)
         return False, 0
     except Exception as e:
@@ -425,6 +435,10 @@ def dividir_pdf_por_tamanho(caminho, caminho_saida, tamanho_mb_maximo=4.4, nome_
     
     except PdfStreamError:
         msg_erro = "O arquivo selecionado não é um PDF válido ou está corrompido.\nPor favor, verifique o arquivo e tente novamente."
+        handle_error("Dividir PDF por Tamanho", msg_erro, None)
+        return
+    except PermissionError:
+        msg_erro = "O arquivo PDF está sendo utilizado por outro programa.\nFeche o arquivo e tente novamente."
         handle_error("Dividir PDF por Tamanho", msg_erro, None)
         return
     except Exception as e:
