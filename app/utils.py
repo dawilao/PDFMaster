@@ -164,11 +164,7 @@ def print_dimensao(componentes_list):
 def validar_caminho_ou_selecionar(caminho):
     """
     Valida se o caminho existe ou abre o seletor de diretório.
-    Também verifica por easter eggs.
     """
-    if caminho.lower() == "jesus":
-        messagebox.askquestion("Amém", "Será que você vai para o céu?")
-    
     if os.path.exists(caminho):
         return caminho
     else:

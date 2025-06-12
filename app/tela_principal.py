@@ -33,6 +33,7 @@ class PDFMasterApp:
         self.entry_caminho_pasta_dividir_por_tamanho = None
         self.entry_caminho_dividir_pdf_1 = None
         self.btn_abrir_pasta_dividir_pdf_por_tamanho = None
+        self.btn_dividir_pdf = None
         self.tab_janela = None
         self.frame_contatos_sair = None
         self.frame_switch = None
@@ -42,6 +43,7 @@ class PDFMasterApp:
         self.debug_frame = None
         self.debug_textbox = None
         self.debug_expanded = False
+        self.timer_hide_debug = None  # Armazena o ID do timer ativo
         self.icone = IconManager()
 
         self.thread_rodando = False
@@ -86,14 +88,6 @@ class PDFMasterApp:
         self.debug_frame = customtkinter.CTkFrame(master=self.janela, fg_color="transparent")
         self.debug_frame.pack(fill="y", padx=10, pady=(0, 5))
 
-        self.btn_toggle_debug = customtkinter.CTkButton(
-            master=self.debug_frame,
-            text="Mostrar passo a passo",
-            command=self.toggle_debug_console,
-            width=180
-        )
-        self.btn_toggle_debug.pack(side="left", padx=(0, 10))
-
         self.debug_textbox = customtkinter.CTkTextbox(
             master=self.debug_frame,
             height=130,
@@ -101,34 +95,19 @@ class PDFMasterApp:
             state="disabled",
             font=("Roboto", 10),
         )
-        self.debug_textbox.pack(side="left", fill="x", expand=True)
-        self.debug_textbox.pack_forget()  # Inicialmente oculto
+        self.debug_textbox.pack(fill="x", expand=True)
 
     def show_debug_console(self):
         """Exibe o campo de debug na tela"""
         if not self.debug_frame:
             self.create_debug_console()
         else:
-            self.debug_frame.pack(fill="x", padx=10, pady=(0, 5))
-            self.btn_toggle_debug.pack(side="left", padx=(0, 10))
-        self.debug_expanded = False
-        self.debug_textbox.pack_forget()
-        self.btn_toggle_debug.configure(text="Mostrar passo a passo")
+            self.debug_frame.pack(fill="y", padx=10, pady=(0, 5))
 
     def hide_debug_console(self):
         """Oculta o campo de debug da tela"""
         if self.debug_frame:
             self.debug_frame.pack_forget()
-
-    def toggle_debug_console(self):
-        """Expande ou minimiza o campo de debug"""
-        if self.debug_expanded:
-            self.debug_textbox.pack_forget()
-            self.btn_toggle_debug.configure(text="Mostrar passo a passo")
-        else:
-            self.debug_textbox.pack(side="left", fill="x", expand=True)
-            self.btn_toggle_debug.configure(text="Ocultar passo a passo")
-        self.debug_expanded = not self.debug_expanded
 
     def append_debug(self, msg):
         """Adiciona mensagem ao campo de debug"""
@@ -216,11 +195,12 @@ class PDFMasterApp:
         self.entry_caminho_dividir_pdf_1.pack(pady=(0,5))
 
         # Botão para dividir um PDF em páginas individuais
-        btn_dividir_pdf = customtkinter.CTkButton(master=frame_aba_dividir_pdf_1, 
+        self.btn_dividir_pdf = customtkinter.CTkButton(master=frame_aba_dividir_pdf_1, 
                                                   text="Dividir PDF", 
                                                   command=self.dividir_pdf_1_interface)
-        btn_dividir_pdf.pack(pady=10)
-        config_btn(btn_dividir_pdf)
+        self.btn_dividir_pdf.pack(pady=10)
+        config_btn(self.btn_dividir_pdf)
+        Tooltip(self.btn_dividir_pdf, "Aguarde a divisão terminar para usar este botão.")
 
     def create_aba_dividir_pdf_por_tamanho(self):
         """Cria a aba 'Dividir PDF por Tamanho'"""
@@ -398,10 +378,18 @@ class PDFMasterApp:
         """Configura os bindings para eventos da janela"""
         self.janela.bind("<Return>", self._on_enter_press)
 
+    def _easter_egg(self, caminho_inicial: str):
+        """Verificar por easter egg"""
+        if caminho_inicial.lower() == "jesus":
+            messagebox.askquestion("Amém", "Será que você vai para o céu?")
+
     # Métodos de comando dos botões - integrados com utils e pdf_utils
     def converter_imagens(self):
         """Converte imagens para PDF"""
         caminho = self.entry_caminho_pasta.get()
+
+        self._easter_egg(caminho)
+
         caminho_validado = validar_caminho_ou_selecionar(caminho)
 
         nome_arquivo = self.entry_nome_do_arquivo_pdf.get().upper().strip()
@@ -442,17 +430,56 @@ class PDFMasterApp:
 
     def dividir_pdf_1_interface(self):
         """Divide PDF em páginas individuais"""
-        caminho_inicial = self.entry_caminho_dividir_pdf_1.get()
-        
-        # Verifica por easter egg
-        if caminho_inicial.lower() == "jesus":
-            messagebox.askquestion("Amém", "Será que você vai para o céu?")
+        # Impede múltiplas execuções simultâneas
+        if self.thread_rodando:
+            messagebox.showinfo("Atenção", "Já existe uma divisão em andamento. Aguarde a finalização.")
+            return
+        self.thread_rodando = True  # Marca que a thread está rodando
+        self.btn_dividir_pdf.after(0, self.bloqueia_botão)  # Desativa botão
 
-        # Seleciona o arquivo PDF
-        arquivo = selecionar_arquivo_pdf(caminho_inicial)
+        caminho_inicial = self.entry_caminho_dividir_pdf_1.get()
+        caminho_inicial = caminho_inicial.replace('"', '').replace("'", "").strip()
+    
+        # Verifica por easter egg
+        self._easter_egg(caminho_inicial)
         
-        if arquivo:
-            dividir_pdf_1(arquivo)
+        arquivo = None
+        
+        # Verifica o tipo do caminho
+        if caminho_inicial:
+            if os.path.isfile(caminho_inicial):
+                # É um arquivo - usa diretamente
+                arquivo = caminho_inicial
+            elif os.path.isdir(caminho_inicial):
+                # É uma pasta - abre seletor nessa pasta
+                arquivo = selecionar_arquivo_pdf(caminho_inicial)
+            else:
+                # Caminho não existe - abre seletor na pasta atual
+                arquivo = selecionar_arquivo_pdf()
+        else:
+            # Caminho vazio - abre seletor na pasta atual
+            arquivo = selecionar_arquivo_pdf()
+        
+        # Verifica se foi selecionado um arquivo
+        if not arquivo:
+            self.thread_rodando = False  # Libera caso o usuário cancele a seleção
+            self.btn_dividir_pdf.after(0, self.restaurar_botao)  # Reativa botão
+            print("Nenhum arquivo selecionado.")
+            return
+        
+        def thread_target():
+            try:
+                dividir_pdf_1(arquivo)
+            finally:
+                self.thread_rodando = False  # Libera a flag ao fim da thread
+                self.btn_dividir_pdf.after(0, self.restaurar_botao)
+        
+        # Atualiza o campo de entrada com o caminho validado
+        self.entry_caminho_dividir_pdf_1.delete(0, 'end')
+        self.entry_caminho_dividir_pdf_1.insert(0,arquivo)
+
+        # Processa o arquivo em thread separada
+        threading.Thread(target=thread_target, daemon=True).start()
 
     def dividir_pdf_por_tamanho_interface(self):
         """Divide PDF por tamanho"""
@@ -461,30 +488,43 @@ class PDFMasterApp:
             messagebox.showinfo("Atenção", "Já existe uma divisão em andamento. Aguarde a finalização.")
             return
         self.thread_rodando = True  # Marca que a thread está rodando
-        self.btn_abrir_pasta_dividir_pdf_por_tamanho.configure(state="disabled")  # Desativa botão
-
+        self.btn_abrir_pasta_dividir_pdf_por_tamanho.after(0, self.bloqueia_botão)  # Desativa botão
+        
         caminho_inicial = self.entry_caminho_pasta_dividir_por_tamanho.get()
-
+        caminho_inicial = caminho_inicial.replace('"', '').replace("'", "").strip()
+        
         # Verifica por easter egg
-        if caminho_inicial.lower() == "jesus":
-            messagebox.askquestion("Amém", "Será que você vai para o céu?")
-
-        # Seleciona o arquivo PDF
-        arquivo = selecionar_arquivo_pdf(caminho_inicial)
-
+        self._easter_egg(caminho_inicial)
+        
+        # Verifica se o caminho informado é um arquivo PDF ou uma pasta
+        if caminho_inicial and os.path.exists(caminho_inicial):
+            if os.path.isfile(caminho_inicial) and caminho_inicial.lower().endswith('.pdf'):
+                # É um arquivo PDF, usa diretamente
+                arquivo = caminho_inicial
+            elif os.path.isdir(caminho_inicial):
+                # É uma pasta, abre o seletor de arquivo nessa pasta
+                arquivo = selecionar_arquivo_pdf(caminho_inicial)
+            else:
+                # Não é PDF nem pasta, abre seletor na pasta pai ou padrão
+                pasta_pai = os.path.dirname(caminho_inicial) if os.path.dirname(caminho_inicial) else None
+                arquivo = selecionar_arquivo_pdf(pasta_pai)
+        else:
+            # Caminho não existe ou está vazio, usa seletor padrão
+            arquivo = selecionar_arquivo_pdf(caminho_inicial if caminho_inicial else None)
+        
         # Só continua se o usuário selecionou um arquivo
         if not arquivo:
             self.thread_rodando = False  # Libera caso o usuário cancele a seleção
-            self.btn_abrir_pasta_dividir_pdf_por_tamanho.configure(state="normal")  # Reativa botão
+            self.btn_abrir_pasta_dividir_pdf_por_tamanho.after(0, self.restaurar_botao)  # Reativa botão
             return
-
+        
         # Obtém o diretório de saída
         pasta_saida = os.path.dirname(arquivo)
-
+        
         # Verifica se na pasta já possui algum arquivo compactado (que possui PT01 no nome)
         padrao_pt = re.compile(r"^pt\d{2}.*\.pdf$", re.IGNORECASE)
         existe_compactado = any(padrao_pt.search(nome) for nome in os.listdir(pasta_saida))
-
+        
         if existe_compactado:
             verificacao = messagebox.askyesno(
                 "Arquivo compactado já existente",
@@ -494,17 +534,15 @@ class PDFMasterApp:
                     "Deseja prosseguir?"
                 )
             )
-
             if not verificacao:
                 self.thread_rodando = False
-                self.btn_abrir_pasta_dividir_pdf_por_tamanho.configure(state="normal")
+                self.btn_abrir_pasta_dividir_pdf_por_tamanho.after(0, self.restaurar_botao)
                 return
-            
+        
             # Remove arquivos PTxx
             arquivos_para_excluir = [
                 f for f in os.listdir(pasta_saida) if padrao_pt.search(f)
             ]
-
             for arquivos_com_PTxx in arquivos_para_excluir:
                 caminho_arquivo = os.path.join(pasta_saida, arquivos_com_PTxx)
                 try:
@@ -512,25 +550,61 @@ class PDFMasterApp:
                     print(f"Arquivo removido: {arquivos_com_PTxx}")
                 except Exception as e:
                     print(f"Erro ao remover {arquivos_com_PTxx}: {e}")
-
+        
         self.show_debug_console()  # Mostra o campo de debug
-
+        
         def thread_target():
             try:
                 self._dividir_pdf_por_tamanho_thread(arquivo, pasta_saida)
             finally:
                 self.thread_rodando = False  # Libera a flag ao fim da thread
-                self.btn_abrir_pasta_dividir_pdf_por_tamanho.configure(
-                    state="normal",
-                    fg_color=("#3a7ebf", "#1f538d"),
-                    hover_color=("#325882", "#14375e"),
-                )
+                self.btn_abrir_pasta_dividir_pdf_por_tamanho.after(0, self.restaurar_botao)
 
-        # Executa em thread separada
-        threading.Thread(target=thread_target, daemon=True).start()
+        # Atualiza o campo de entrada com o caminho validado
+        self.entry_caminho_pasta_dividir_por_tamanho.delete(0, 'end')
+        self.entry_caminho_pasta_dividir_por_tamanho.insert(0,arquivo)
+
+        # Inicia a thread (assumindo que você tem essa parte implementada)
+        thread = threading.Thread(target=thread_target)
+        thread.start()
+
+    def bloqueia_botão(self):
+        """Bloqueia os botões"""
+        self.btn_abrir_pasta_dividir_pdf_por_tamanho.configure(
+            state="disabled",
+            fg_color=("#3a7ebf", "#1f538d"),
+            hover_color=("#325882", "#14375e"),
+            hover=True,
+        )
+        self.btn_dividir_pdf.configure(
+            state="disabled",
+            fg_color=("#3a7ebf", "#1f538d"),
+            hover_color=("#325882", "#14375e"),
+            hover=True,
+        )
+
+    def restaurar_botao(self):
+        """Restaura o estado normal dos botões, após o threading finalizar"""
+        self.btn_abrir_pasta_dividir_pdf_por_tamanho.configure(
+            state="normal",
+            fg_color=("#3a7ebf", "#1f538d"),
+            hover_color=("#325882", "#14375e"),
+            hover=True,
+        )
+        self.btn_dividir_pdf.configure(
+            state="normal",
+            fg_color=("#3a7ebf", "#1f538d"),
+            hover_color=("#325882", "#14375e"),
+            hover=True,
+        )
 
     def _dividir_pdf_por_tamanho_thread(self, arquivo, pasta_saida):
         try:
+            # Cancela o timer anterior se existir
+            if self.timer_hide_debug:
+                self.janela.after_cancel(self.timer_hide_debug)
+                self.timer_hide_debug = None
+
             self.clear_debug()
             self.append_debug("Iniciando divisão do PDF...")
             dividir_pdf_por_tamanho(arquivo, pasta_saida, nome_usuario=self.nome_usuario, callback=self.append_debug)
@@ -538,8 +612,13 @@ class PDFMasterApp:
         except Exception as e:
             self.append_debug(f"Erro: {e}")
         finally:
+            # Cancela qualquer timer pendente e cria um novo
+            if self.timer_hide_debug:
+                self.janela.after_cancel(self.timer_hide_debug)
+
             # Aguarda um tempo para o usuário ver a mensagem final, se quiser
-            self.janela.after(15000, self.hide_debug_console)
+            # e armazena o ID do novo timer
+            self.timer_hide_debug = self.janela.after(15000, self.hide_debug_console)
 
     def clear_debug(self):
         """Limpa o campo de debug"""

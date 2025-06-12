@@ -446,7 +446,7 @@ def dividir_pdf_por_tamanho(caminho, caminho_saida, tamanho_mb_maximo=4.4, nome_
         return
 
 
-def selecionar_arquivo_pdf(caminho_inicial=""):
+def selecionar_arquivo_pdf(caminho_inicial: str = ""):
     """
     Abre um diálogo para selecionar um arquivo PDF
     
