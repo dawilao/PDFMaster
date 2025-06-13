@@ -165,14 +165,11 @@ class LoginManager:
         # Criar janela de alteração de senha
         self.janela_alterar = ctk.CTk()
         self.janela_alterar.title("PDFMaster - Alterar Senha")
-        self.janela_alterar.geometry("300x400")
+        self.janela_alterar.geometry("320x400")
+        self.janela_alterar.resizable(False, False)
         ctk.set_default_color_theme("blue")
 
         self.icone.set_window_icon(self.janela_alterar)
-
-        """# Título da janela
-        titulo = ctk.CTkLabel(master=self.janela_alterar, text="PDFMaster\nAlterar senha", font=("Segoe UI", 32, "bold"))
-        titulo.pack(pady=(20, 0))"""
 
         frame = ctk.CTkFrame(master=self.janela_alterar)
         frame.pack(fill="both", expand=True, padx=5, pady=5)
@@ -249,6 +246,7 @@ class LoginManager:
         self.root_login = ctk.CTk()
         self.root_login.title("PDFMaster - Login")
         self.root_login.geometry("300x380")
+        self.root_login.resizable(False, False)
         ctk.set_default_color_theme("blue")
 
         self.icone.set_window_icon(self.root_login)

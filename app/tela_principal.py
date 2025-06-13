@@ -9,9 +9,11 @@ import re
 try:
     from .utils import config_btn, switch_altera_modo_dark_light, print_dimensao, validar_caminho_ou_selecionar, criar_pastas, handle_error, IconManager, Tooltip
     from .pdf_utils import convert_to_pdf, dividir_pdf_1, dividir_pdf_por_tamanho, selecionar_arquivo_pdf
+    from .mensagens import MensagemInterativa
 except ImportError:
     from utils import config_btn, switch_altera_modo_dark_light, print_dimensao, validar_caminho_ou_selecionar, criar_pastas, handle_error, IconManager, Tooltip
     from pdf_utils import convert_to_pdf, dividir_pdf_1, dividir_pdf_por_tamanho, selecionar_arquivo_pdf
+    from mensagens import MensagemInterativa
 
 class PDFMasterApp:
     __author__ = "Dawison Nascimento"
@@ -21,6 +23,7 @@ class PDFMasterApp:
     def __init__(self, nome_usuario=None):
         # Inicialização das variáveis globais como atributos da classe
         self.nome_usuario = nome_usuario.title()
+        self.admin_users = ["Usuário Teste", "Admin"]
         self.entry_caminho_pasta = None
         self.entry_nome_do_arquivo_pdf = None
         self.btn_versao = None
@@ -39,18 +42,22 @@ class PDFMasterApp:
         self.frame_switch = None
         self.label_switch = None
         self.espaco_centralizar_switch = 0
-        self.tamanho_janela = "540x430"
+        self.tamanho_janela = "600x450"
+        self.tamanho_janela_admin_users = "600x500"
         self.debug_frame = None
         self.debug_textbox = None
         self.debug_expanded = False
         self.timer_hide_debug = None  # Armazena o ID do timer ativo
         self.icone = IconManager()
 
+        self.mensagem_sistema = MensagemInterativa(nome_usuario)
+        self.titulo_label = None
+
         self.thread_rodando = False
-        
+
         # Configurar modo de aparência
         customtkinter.set_appearance_mode("system")
-        
+
         # Criar e configurar a janela principal
         self.setup_main_window()
         self.setup_bindings()
@@ -63,12 +70,51 @@ class PDFMasterApp:
         
         self.janela.geometry(self.tamanho_janela)
         self.janela.resizable(True, True)
+        largura, altura = self.tamanho_janela.split("x") # Extrai largura e altura do string
+        self.janela.minsize(int(largura), int(altura)) 
 
         self.icone.set_window_icon(self.janela)
 
         # Título da janela com o nome do usuário
-        titulo = customtkinter.CTkLabel(master=self.janela, text=f"Bem-vindo, {self.nome_usuario}!", font=("Segoe UI", 16, "bold"))
-        titulo.pack(pady=(10, 5))
+        mensagem, tipo_cor = self.mensagem_sistema.gerar_mensagem()
+        cor = self.mensagem_sistema.obter_cor(tipo_cor)
+
+        if cor:
+            self.titulo_label = customtkinter.CTkLabel(
+                master=self.janela,
+                text=mensagem,
+                font=("Segoe UI", 16, "bold"),
+                text_color=cor,
+            )
+        else:
+            self.titulo_label = customtkinter.CTkLabel(
+                master=self.janela,
+                text=mensagem,
+                font=("Segoe UI", 16, "bold"),
+                text_color=cor,
+            )
+        self.titulo_label.pack(pady=(15, 5), padx=5)
+
+        if self.nome_usuario in self.admin_users:
+            self.janela.geometry(self.tamanho_janela_admin_users)
+            largura, altura = self.tamanho_janela_admin_users.split("x") # Extrai largura e altura do string
+            self.janela.minsize(int(largura), int(altura)) 
+
+            # Botão para testar novas mensagens
+            btn_nova_msg = customtkinter.CTkButton(
+                master=self.janela,
+                text="Nova Mensagem",
+                command=self.atualizar_mensagem
+            )
+            btn_nova_msg.pack(pady=5)
+            
+            # Botão para mostrar paleta de cores
+            btn_cores = customtkinter.CTkButton(
+                master=self.janela,
+                text="Ver Paleta de Cores",
+                command=self.mostrar_cores
+            )
+            btn_cores.pack(pady=5)
      
         self.tab_janela = customtkinter.CTkTabview(master=self.janela, border_width=2, height=40)
         self.tab_janela.pack(pady=(0,5), padx=10, fill="x")  # Ajusta o padding e expande para preencher o espaço
@@ -126,6 +172,54 @@ class PDFMasterApp:
             self.debug_textbox.see("end")
         
         self.debug_textbox.configure(state="disabled")
+
+    def atualizar_mensagem(self):
+        """Atualiza a mensagem e cor na tela"""
+        mensagem, tipo_cor = self.mensagem_sistema.gerar_mensagem()
+        cor = self.mensagem_sistema.obter_cor(tipo_cor)
+        
+        # Atualiza o texto
+        self.titulo_label.configure(text=mensagem)
+        
+        # Atualiza a cor
+        if cor:
+            self.titulo_label.configure(text_color=cor)
+        else:
+            self.titulo_label.configure(text_color=("gray10", "gray90"))  # Cor padrão      
+
+    def mostrar_cores(self):
+        """Mostra exemplos de todas as cores disponíveis"""
+        cores_info = {
+            'Sexta-feira': "#00D4AA",
+            'Segunda-feira': "#FF6B35", 
+            'Especial': "#1E88E5",
+            'Natal': "#FF1744",
+            'Ano Novo': "#FFD700",
+            'Halloween': "#FF8F00",
+            'Domingo': "#9C27B0",
+            'Motivacional': "#4CAF50"
+        }
+        
+        # Cria uma nova janela para mostrar as cores
+        janela_cores = customtkinter.CTkToplevel(self.janela)
+        janela_cores.title("Paleta de Cores")
+        janela_cores.geometry("400x500")
+        
+        titulo = customtkinter.CTkLabel(
+            janela_cores, 
+            text="Paleta de Cores das Mensagens",
+            font=("Segoe UI", 18, "bold")
+        )
+        titulo.pack(pady=20)  
+
+        for nome, cor in cores_info.items():
+            label_exemplo = customtkinter.CTkLabel(
+                janela_cores,
+                text=f"{nome}: Exemplo de mensagem",
+                font=("Segoe UI", 14),
+                text_color=cor
+            )
+            label_exemplo.pack(pady=5)
 
     def create_aba_imagem_pdf(self):
         """Cria a aba 'Imagem para PDF'"""
@@ -734,7 +828,7 @@ class PDFMasterApp:
     def _get_info_versao(self):
         """Retorna informações de versão"""
         return (
-            f"Criado por: {self.__author__}\n"
+            f"Autor: {self.__author__}\n"
             f"Licença: {self.__license__}\n"
             f"Versão: {self.__version__}\n"
         )
