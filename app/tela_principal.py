@@ -10,15 +10,17 @@ try:
     from .utils import config_btn, switch_altera_modo_dark_light, print_dimensao, validar_caminho_ou_selecionar, criar_pastas, handle_error, IconManager, Tooltip
     from .pdf_utils import convert_to_pdf, dividir_pdf_1, dividir_pdf_por_tamanho, selecionar_arquivo_pdf
     from .mensagens import MensagemInterativa
+    from .version_checker import get_version
 except ImportError:
     from utils import config_btn, switch_altera_modo_dark_light, print_dimensao, validar_caminho_ou_selecionar, criar_pastas, handle_error, IconManager, Tooltip
     from pdf_utils import convert_to_pdf, dividir_pdf_1, dividir_pdf_por_tamanho, selecionar_arquivo_pdf
     from mensagens import MensagemInterativa
+    from version_checker import get_version
 
 class PDFMasterApp:
     __author__ = "Dawison Nascimento"
     __license__ = "MIT License"
-    __version__ = "1.0.0"
+    __version__ = get_version()
 
     def __init__(self, nome_usuario=None):
         # Inicialização das variáveis globais como atributos da classe
