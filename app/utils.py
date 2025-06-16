@@ -89,7 +89,7 @@ class IconManager:
     def __init__(self):
         self.icon_paths = [
             r'app\assets\PDFMaster_icon.ico',
-            r'G:\Meu Drive\17 - MODELOS\PROGRAMAS\PDFMaster\app\PDFMaster_icon.ico',
+            r'G:\Meu Drive\17 - MODELOS\PROGRAMAS\PDFMaster\app\assets\PDFMaster_icon.ico',
         ]
 
     def set_window_icon(self, window):
