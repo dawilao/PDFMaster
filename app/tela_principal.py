@@ -8,12 +8,12 @@ import re
 
 try:
     from .utils import config_btn, switch_altera_modo_dark_light, print_dimensao, validar_caminho_ou_selecionar, criar_pastas, handle_error, IconManager, Tooltip
-    from .pdf_utils import convert_to_pdf, dividir_pdf_1, dividir_pdf_por_tamanho, selecionar_arquivo_pdf
+    from .pdf_utils import convert_to_pdf, dividir_pdf_1, dividir_pdf_por_tamanho, selecionar_arquivo_pdf, criar_tela_drag_drop
     from .mensagens import MensagemInterativa
     from .version_checker import get_version
 except ImportError:
     from utils import config_btn, switch_altera_modo_dark_light, print_dimensao, validar_caminho_ou_selecionar, criar_pastas, handle_error, IconManager, Tooltip
-    from pdf_utils import convert_to_pdf, dividir_pdf_1, dividir_pdf_por_tamanho, selecionar_arquivo_pdf
+    from pdf_utils import convert_to_pdf, dividir_pdf_1, dividir_pdf_por_tamanho, selecionar_arquivo_pdf, criar_tela_drag_drop
     from mensagens import MensagemInterativa
     from version_checker import get_version
 
@@ -257,18 +257,28 @@ class PDFMasterApp:
                                                      border_width=1)
         self.entry_nome_do_arquivo_pdf.pack(pady=(5, 10))
 
+        # Botão para arrastar e soltar imagens para PDF
+        btn_arrastar_soltar = customtkinter.CTkButton(master=frame_aba_imagem_pdf,
+                                                      text="Arrastar e Soltar Imagens",
+                                                      command=self.abrir_tela_arrastar_soltar)
+        btn_arrastar_soltar.pack(pady=(10, 5))
+        config_btn(btn_arrastar_soltar)
+        
+        # Adiciona tooltip ao botão de arrastar e soltar
+        Tooltip(btn_arrastar_soltar, "Abrir tela para arrastar e soltar imagens para converter em PDF")
+
         # Botão para converter imagens em PDF
         btn_converter = customtkinter.CTkButton(master=frame_aba_imagem_pdf,
                                                 text="Converter Imagens para PDF",
                                                 command=self.converter_imagens)
-        btn_converter.pack(pady=15)
+        btn_converter.pack(pady=5)
         config_btn(btn_converter)
 
         # Botão para criar pastas padrão
         btn_criar_pastas = customtkinter.CTkButton(master=frame_aba_imagem_pdf,
                                                    text="Criar Pastas Padrão",
                                                    command=self.criar_pastas_interface)
-        btn_criar_pastas.pack(pady=(0,10))
+        btn_criar_pastas.pack(pady=(5,10))
         config_btn(btn_criar_pastas)
 
     def create_aba_dividir_pdf(self):
@@ -838,6 +848,19 @@ class PDFMasterApp:
     def run(self):
         """Inicia o loop principal da aplicação"""
         self.janela.mainloop()
+
+    def abrir_tela_arrastar_soltar(self):
+        """
+        Abre a tela para arrastar e soltar imagens para converter em PDF
+        """
+        try:
+            # Abre a tela de arrastar e soltar
+            criar_tela_drag_drop()
+            
+            # Foca de volta na janela principal
+            self.janela.focus()
+        except Exception as e:
+            handle_error("abrir_tela_arrastar_soltar", f"Erro ao abrir tela de arrastar e soltar: {str(e)}", None)
 
 def janela(nome_usuario):
     """Função para iniciar a aplicação PDFMaster com o nome do usuário"""

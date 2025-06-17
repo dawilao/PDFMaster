@@ -3,7 +3,7 @@ import os
 import glob
 from pypdf import PdfReader, PdfWriter
 from pypdf.errors import PdfStreamError
-from tkinter import filedialog, messagebox
+from tkinter import filedialog, messagebox, Tk, Frame, Label, Button
 from PIL import Image
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import A4
@@ -12,6 +12,13 @@ try:
     from .utils import handle_error, exportar_log_tempo
 except ImportError:
     from utils import handle_error, exportar_log_tempo
+
+# Importação para TkinterDND2
+try:
+    from tkinterdnd2 import TkinterDnD, DND_FILES
+except ImportError:
+    # Caso o TkinterDND2 não esteja instalado
+    print("TkinterDND2 não está instalado. Execute: pip install tkinterdnd2")
 
 def convert_to_pdf(pasta_imagens, output_pdf):
     """
@@ -471,3 +478,290 @@ def selecionar_arquivo_pdf(caminho_inicial: str = ""):
         filetypes=[("PDF files", "*.pdf")]
     )
     return arquivo if arquivo else None
+
+def criar_tela_arrastar_soltar():
+    """
+    Cria uma tela para arrastar e soltar arquivos de imagem ou PDF
+    """
+    def on_drop(event):
+        # Obtém o caminho do arquivo arrastado
+        arquivos = root.tk.splitlist(event.data)
+        for arquivo in arquivos:
+            # Aqui você pode adicionar o que fazer com cada arquivo
+            print(f"Arquivo arrastado: {arquivo}")
+
+    root = TkinterDnD.Tk()
+
+    # Configurações da janela
+    root.title("Arraste e Solte seus arquivos aqui")
+    root.geometry("400x300")
+
+    # Frame para a área de arrastar e soltar
+    frame = Frame(root, bg="lightgray")
+    frame.pack(fill="both", expand=True)
+
+    label = Label(frame, text="Arraste seus arquivos de imagem ou PDF aqui", bg="lightgray")
+    label.pack(pady=20)
+
+    # Botão de fechar
+    btn_fechar = Button(frame, text="Fechar", command=root.quit)
+    btn_fechar.pack(side="bottom", pady=10)
+
+    # Registro da função de drop
+    frame.drop_target_register(DND_FILES)
+    frame.dnd_bind('<<Drop>>', on_drop)
+
+    root.mainloop()
+
+def criar_tela_drag_drop():
+    """
+    Cria uma tela que permite arrastar e soltar imagens para converter em PDF.
+    
+    Returns:
+        list: Lista com os caminhos das imagens selecionadas
+    """
+    try:
+        # Lista para armazenar os arquivos arrastados
+        arquivos_selecionados = []
+        
+        # Criar janela com suporte a arrastar e soltar
+        janela_dnd = TkinterDnD.Tk()
+        janela_dnd.title("Arrastar e Soltar Imagens")
+        janela_dnd.geometry("600x400")
+        janela_dnd.resizable(True, True)
+        
+        # Centralizar janela na tela
+        largura_tela = janela_dnd.winfo_screenwidth()
+        altura_tela = janela_dnd.winfo_screenheight()
+        largura_janela = 600
+        altura_janela = 400
+        pos_x = (largura_tela // 2) - (largura_janela // 2)
+        pos_y = (altura_tela // 2) - (altura_janela // 2)
+        janela_dnd.geometry(f"{largura_janela}x{altura_janela}+{pos_x}+{pos_y}")
+        
+        # Frame principal
+        frame_principal = Frame(janela_dnd, bg="#F0F0F0")
+        frame_principal.pack(fill="both", expand=True, padx=10, pady=10)
+        
+        # Label para mostrar arquivos selecionados
+        lbl_arquivos = Label(
+            frame_principal, 
+            text="Arraste e solte suas imagens aqui", 
+            font=("Segoe UI", 12),
+            bg="#F0F0F0",
+            wraplength=550
+        )
+        lbl_arquivos.pack(pady=20)
+        
+        # Frame para exibição
+        frame_drop = Frame(frame_principal, bg="#FFFFFF", relief="groove", bd=2)
+        frame_drop.pack(fill="both", expand=True, padx=10, pady=10)
+        
+        # Label de instruções dentro do frame
+        lbl_instrucao = Label(
+            frame_drop,
+            text="Solte suas imagens aqui\n\nFormatos suportados: .jpg, .jpeg, .png, .bmp, .tiff, .gif",
+            font=("Segoe UI", 12),
+            bg="#FFFFFF"
+        )
+        lbl_instrucao.pack(fill="both", expand=True)
+        
+        # Contador de arquivos
+        lbl_contador = Label(
+            frame_principal,
+            text="0 arquivo(s) selecionado(s)",
+            font=("Segoe UI", 10),
+            bg="#F0F0F0"
+        )
+        lbl_contador.pack(pady=(5, 10))
+        
+        # Configurações para arrastar e soltar
+        def atualizar_lista_arquivos(lista_arquivos):
+            # Filtrar apenas os tipos de arquivos permitidos
+            extensoes_permitidas = ['.jpg', '.jpeg', '.png', '.bmp', '.tiff', '.gif']
+            arquivos_validos = []
+            
+            for arquivo in lista_arquivos:
+                # Remover as chaves {} do formato TkinterDND
+                arquivo = arquivo.strip('{}')
+                # Verificar extensão do arquivo
+                _, ext = os.path.splitext(arquivo.lower())
+                if ext in extensoes_permitidas:
+                    arquivos_validos.append(arquivo)
+            
+            # Atualizar lista de arquivos selecionados
+            arquivos_selecionados.clear()
+            arquivos_selecionados.extend(arquivos_validos)
+            
+            # Atualizar texto no label
+            if arquivos_validos:
+                nomes_arquivos = "\n".join(os.path.basename(a) for a in arquivos_validos)
+                lbl_instrucao.config(
+                    text=f"Arquivos selecionados:\n\n{nomes_arquivos}"
+                )
+                lbl_contador.config(text=f"{len(arquivos_validos)} arquivo(s) selecionado(s)")
+                btn_gerar_pdf.config(state="normal")
+            else:
+                lbl_instrucao.config(
+                    text="Solte suas imagens aqui\n\nFormatos suportados: .jpg, .jpeg, .png, .bmp, .tiff, .gif"
+                )
+                lbl_contador.config(text="0 arquivo(s) selecionado(s)")
+                btn_gerar_pdf.config(state="disabled")
+        
+        # Função para lidar com os arquivos soltos na área
+        def drop(event):
+            # Os arquivos vêm como uma string separada por espaços
+            arquivos = event.data
+            # Converter para lista (o formato depende do sistema)
+            if "{" in arquivos:
+                # Windows/MacOS geralmente usa {} para caminhos com espaços
+                import re
+                lista_arquivos = re.findall(r'\{[^}]*\}|[^ {}]+', arquivos)
+            else:
+                # Linux normalmente separa por espaços
+                lista_arquivos = arquivos.split()
+            
+            atualizar_lista_arquivos(lista_arquivos)
+        
+        # Registrar suporte para drop
+        frame_drop.drop_target_register(DND_FILES)
+        frame_drop.dnd_bind('<<Drop>>', drop)
+        
+        # Função para gerar PDF com os arquivos selecionados
+        def gerar_pdf():
+            if not arquivos_selecionados:
+                messagebox.showinfo("Aviso", "Nenhuma imagem selecionada.")
+                return
+            
+            # Solicitar local para salvar o PDF
+            output_pdf = filedialog.asksaveasfilename(
+                defaultextension=".pdf",
+                filetypes=[("PDF Files", "*.pdf")],
+                title="Salvar PDF como"
+            )
+            
+            if not output_pdf:
+                return  # Operação cancelada pelo usuário
+                
+            # Criar PDF a partir das imagens
+            try:
+                # Cria um novo documento PDF usando reportlab para melhor controle de layout
+                c = canvas.Canvas(output_pdf, pagesize=A4)
+                page_width, page_height = A4
+                
+                for img_path in arquivos_selecionados:
+                    # Abre a imagem
+                    img = Image.open(img_path)
+                    
+                    # Converte para RGB se necessário (para garantir compatibilidade com PDF)
+                    if img.mode != 'RGB':
+                        img = img.convert('RGB')
+                    
+                    # Calcula as dimensões da imagem para caber na página com proporção correta
+                    img_width, img_height = img.size
+                    
+                    # Calcula o redimensionamento mantendo a proporção
+                    if img_width > img_height:
+                        # Imagem em formato paisagem
+                        scaled_width = page_width - 40  # Margem de 20 pontos de cada lado
+                        scaled_height = (scaled_width / img_width) * img_height
+                        
+                        # Se a altura ainda for maior que a página, redimensiona pela altura
+                        if scaled_height > page_height - 40:
+                            scaled_height = page_height - 40
+                            scaled_width = (scaled_height / img_height) * img_width
+                    else:
+                        # Imagem em formato retrato
+                        scaled_height = page_height - 40  # Margem de 20 pontos de cada lado
+                        scaled_width = (scaled_height / img_height) * img_width
+                        
+                        # Se a largura ainda for maior que a página, redimensiona pela largura
+                        if scaled_width > page_width - 40:
+                            scaled_width = page_width - 40
+                            scaled_height = (scaled_width / img_width) * img_height
+                    
+                    # Centraliza a imagem na página
+                    x_pos = (page_width - scaled_width) / 2
+                    y_pos = (page_height - scaled_height) / 2
+                    
+                    # Adiciona a imagem ao PDF centralizada na página
+                    c.drawImage(img_path, x_pos, y_pos, width=scaled_width, height=scaled_height)
+                    c.showPage()  # Adiciona uma nova página para a próxima imagem
+                
+                # Salva o documento PDF
+                c.save()
+                messagebox.showinfo("Sucesso", f"PDF criado com sucesso: {output_pdf}")
+                
+                # Fechar a janela após sucesso
+                janela_dnd.destroy()
+                
+            except Exception as e:
+                messagebox.showerror("Erro", f"Erro ao criar PDF: {str(e)}")
+        
+        # Frame para botões na parte inferior
+        frame_botoes = Frame(frame_principal, bg="#F0F0F0")
+        frame_botoes.pack(fill="x", pady=10)
+        
+        # Botão para selecionar arquivos manualmente
+        def selecionar_arquivos():
+            arquivos = filedialog.askopenfilenames(
+                title="Selecionar Imagens",
+                filetypes=[
+                    ("Imagens", "*.jpg *.jpeg *.png *.bmp *.tiff *.gif"),
+                    ("JPEG", "*.jpg *.jpeg"),
+                    ("PNG", "*.png"),
+                    ("BMP", "*.bmp"),
+                    ("TIFF", "*.tiff"),
+                    ("GIF", "*.gif")
+                ]
+            )
+            
+            if arquivos:
+                atualizar_lista_arquivos(arquivos)
+        
+        # Botão para gerar PDF
+        btn_selecionar = Button(
+            frame_botoes,
+            text="Selecionar Arquivos",
+            command=selecionar_arquivos,
+            font=("Segoe UI", 10),
+            bg="#EEEEEE",
+            padx=10
+        )
+        btn_selecionar.pack(side="left", padx=10)
+        
+        btn_gerar_pdf = Button(
+            frame_botoes,
+            text="Gerar PDF",
+            command=gerar_pdf,
+            font=("Segoe UI", 10, "bold"),
+            bg="#4CAF50",
+            fg="white",
+            padx=10,
+            state="disabled"
+        )
+        btn_gerar_pdf.pack(side="right", padx=10)
+        
+        # Botão de cancelar
+        def cancelar():
+            janela_dnd.destroy()
+            
+        btn_cancelar = Button(
+            frame_botoes,
+            text="Cancelar",
+            command=cancelar,
+            font=("Segoe UI", 10),
+            bg="#F44336",
+            fg="white",
+            padx=10
+        )
+        btn_cancelar.pack(side="right", padx=10)
+        
+        # Iniciar loop da janela
+        janela_dnd.mainloop()
+        
+        return arquivos_selecionados
+        
+    except Exception as e:
+        handle_error("criar_tela_drag_drop", f"Erro ao criar tela de arrastar e soltar: {str(e)}", None)
+        return []
