@@ -259,6 +259,7 @@ def dividir_pdf_por_tamanho(caminho, caminho_saida, tamanho_mb_maximo=4.4, nome_
     import time
 
     lista_tempo_total = []
+    tempo_total = 0
     
     def log(msg):
         if callback:
