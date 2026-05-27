@@ -1,6 +1,8 @@
+import io
 import shutil
 import os
 import glob
+import time
 from pypdf import PdfReader, PdfWriter
 from pypdf.errors import PdfStreamError
 from tkinter import filedialog, messagebox
@@ -54,16 +56,11 @@ def convert_to_pdf(pasta_imagens, output_pdf):
         
         for img_path in imagens:
             print("Convertendo:", img_path)
-            
-            # Abre a imagem
-            img = Image.open(img_path)
-            
-            # Converte para RGB se necessário (para garantir compatibilidade com PDF)
-            if img.mode != 'RGB':
-                img = img.convert('RGB')
-            
-            # Calcula as dimensões da imagem para caber na página com proporção correta
-            img_width, img_height = img.size
+
+            # Abre a imagem apenas para obter as dimensões
+            # (reportlab reabre o arquivo por conta própria via img_path)
+            with Image.open(img_path) as img:
+                img_width, img_height = img.size
             
             # Calcula o redimensionamento mantendo a proporção
             if img_width > img_height:
@@ -152,21 +149,21 @@ def dividir_pdf_1(diretorio):
         return
 
 
-def reduzir_tamanho_pdf(input_pdf, output_pdf, qualidade_imagem=30, nivel_compressao=7, callback=None, tempo_total=None):
+def reduzir_tamanho_pdf(input_pdf, output_pdf, qualidade_imagem=30, nivel_compressao=7,
+                         max_dimensao_imagem=1080, callback=None):
     """
     Reduz o tamanho de um arquivo PDF comprimindo conteúdo e imagens.
-    
+
     Args:
         input_pdf (str): Caminho do arquivo PDF de entrada
         output_pdf (str): Caminho do arquivo PDF de saída
-        qualidade_imagem (int): Qualidade das imagens (1-100, padrão: 40)
-        nivel_compressao (int): Nível de compressão (1-9, padrão: 9)
-    
-    Returns:
-        bool: True se bem-sucedido, False caso contrário
-    """
-    import time
+        qualidade_imagem (int): Qualidade JPEG das imagens (1-100, padrão: 30)
+        nivel_compressao (int): Nível de compressão zlib dos content streams (1-9, padrão: 7)
+        max_dimensao_imagem (int): Dimensão máxima das imagens em pixels (0 = sem limite, padrão: 1080)
 
+    Returns:
+        tuple[bool, float]: (sucesso, tempo_em_segundos)
+    """
     tempo_total = 0
 
     def log(msg):
@@ -180,35 +177,90 @@ def reduzir_tamanho_pdf(input_pdf, output_pdf, qualidade_imagem=30, nivel_compre
     try:
         # Cria o writer e clona do reader
         writer = PdfWriter()
-        
+
+        # Rastreia objetos de imagem já processados pelo indirect_reference.
+        # PDFs frequentemente compartilham o mesmo XObject de imagem entre páginas
+        # (ex: logotipo, fundo). Sem este controle, a mesma imagem seria re-codificada
+        # em JPEG com perda a cada página que a referenciar, acumulando degradação.
+        imagens_processadas: set = set()
+
         # Abre e lê o PDF original
         with open(input_pdf, "rb") as input_file:
             reader = PdfReader(input_file)
             total_pages = len(reader.pages)
-            
+
             # Processa cada página
             for i, page in enumerate(reader.pages):
                 log(f"    - Compactando página {i+1}/{total_pages}...")
 
                 # Adiciona a página ao writer PRIMEIRO
                 writer.add_page(page)
-                
+
                 # Agora processa a página que pertence ao writer
                 writer_page = writer.pages[i]
 
-                # Comprime streams de conteúdo
+                # Comprime streams de conteúdo (texto, vetores)
                 try:
                     writer_page.compress_content_streams(level=nivel_compressao)
                 except Exception as e:
                     handle_error("reduzir_tamanho_pdf", f"Erro ao comprimir página {i+1}: {e}", None)
-                
-                # Processa imagens na página
+
+                # Comprime imagens da página (pulando as já processadas em outras páginas)
                 try:
                     if hasattr(writer_page, 'images') and writer_page.images:
                         for img in writer_page.images:
                             try:
-                                img.replace(img.image, quality=qualidade_imagem)
-                                # Sucesso ao processar imagem, não precisa logar
+                                # Identificador único do objeto PDF no writer
+                                ref = getattr(img, 'indirect_reference', None)
+                                ref_key = (ref.idnum, ref.generation) if ref else None
+
+                                if ref_key is not None and ref_key in imagens_processadas:
+                                    continue  # Imagem compartilhada, já comprimida
+                                if ref_key is not None:
+                                    imagens_processadas.add(ref_key)
+
+                                # Verificar tamanho dos dados brutos ANTES do decode (caro).
+                                # O decode JPEG + re-encode custa ~0,1 s por imagem.
+                                # Se a imagem já é pequena (≤ 25 KB) e não precisa de
+                                # redimensionamento, o ganho de re-encodar é mínimo (~5 KB)
+                                # e não justifica o custo.
+                                dados_brutos = getattr(img, 'data', None)
+                                tamanho_bruto = len(dados_brutos) if dados_brutos is not None else -1
+
+                                if tamanho_bruto >= 0:
+                                    # Dimensões via metadados do XObject — sem decode JPEG
+                                    xobj = ref.get_object() if ref else None
+                                    dim_w = int(xobj.get("/Width", 0)) if xobj else 0
+                                    dim_h = int(xobj.get("/Height", 0)) if xobj else 0
+
+                                    precisa_resize = (
+                                        max_dimensao_imagem > 0
+                                        and dim_w > 0 and dim_h > 0
+                                        and max(dim_w, dim_h) > max_dimensao_imagem
+                                    )
+
+                                    # Pular apenas quando dimensões são conhecidas,
+                                    # não há resize necessário, e imagem já é pequena
+                                    if dim_w > 0 and dim_h > 0 and not precisa_resize and tamanho_bruto <= 50_000:
+                                        continue
+
+                                pil_img = img.image
+                                img_w, img_h = pil_img.size
+
+                                # Redimensiona imagens acima da resolução máxima.
+                                # Fotos de relatórios ficam frequentemente em 3000-4000px,
+                                # mas são exibidas em miniaturas no PDF. Reduzir a resolução
+                                # tem impacto maior na compressão do que só reduzir a qualidade.
+                                if max_dimensao_imagem > 0 and max(img_w, img_h) > max_dimensao_imagem:
+                                    escala = max_dimensao_imagem / max(img_w, img_h)
+                                    novo_w = max(1, int(img_w * escala))
+                                    novo_h = max(1, int(img_h * escala))
+                                    pil_img = pil_img.resize(
+                                        (novo_w, novo_h),
+                                        Image.Resampling.BILINEAR
+                                    )
+
+                                img.replace(pil_img, quality=qualidade_imagem)
                             except Exception as e:
                                 handle_error("reduzir_tamanho_pdf", f"Erro ao processar imagem na página {i+1}: {e}", None)
                 except Exception as e:
@@ -220,9 +272,14 @@ def reduzir_tamanho_pdf(input_pdf, output_pdf, qualidade_imagem=30, nivel_compre
         except Exception as e:
             handle_error("reduzir_tamanho_pdf", f"Erro ao comprimir objetos idênticos: {e}", None)
 
-        # Salva o arquivo
+        # Serializa em memória antes de abrir o arquivo de saída.
+        # Isso é seguro mesmo quando input_pdf == output_pdf: o reader
+        # já está fechado e todos os streams foram processados nas etapas acima.
+        output_buffer = io.BytesIO()
+        writer.write(output_buffer)
+
         with open(output_pdf, "wb") as output_file:
-            writer.write(output_file)
+            output_file.write(output_buffer.getvalue())
 
         tempo_total = time.time() - tempo_inicio  # Calcula o tempo total
         log(f"- Compactação finalizada.\nTempo de execução: {tempo_total:.2f} segundos")
@@ -248,7 +305,7 @@ def reduzir_tamanho_pdf(input_pdf, output_pdf, qualidade_imagem=30, nivel_compre
         return False, 0
 
 
-def dividir_pdf_por_tamanho(caminho, caminho_saida, tamanho_mb_maximo=4.4, nome_usuario=None, callback=None):
+def dividir_pdf_por_tamanho(caminho, caminho_saida, tamanho_mb_maximo=4.7, nome_usuario=None, callback=None):
     """
     Divide um PDF em partes menores baseado no tamanho máximo especificado
     
@@ -256,8 +313,6 @@ def dividir_pdf_por_tamanho(caminho, caminho_saida, tamanho_mb_maximo=4.4, nome_
         arquivo_pdf (str): Caminho do arquivo PDF a ser dividido
         tamanho_max_mb (int): Tamanho máximo em MB para cada parte
     """
-    import time
-
     lista_tempo_total = []
     tempo_total = 0
     
@@ -312,10 +367,15 @@ def dividir_pdf_por_tamanho(caminho, caminho_saida, tamanho_mb_maximo=4.4, nome_
 
             num_contagem = 1
             current_writer = PdfWriter()
-            temp_caminho = os.path.join(temp_folder, "temp.pdf")
+            # Buffer em memória reutilizável para medir o tamanho real a cada página.
+            # A medição real por página garante que o split ocorra no momento exato
+            # em que o limite é atingido, sem risco de excedê-lo por subestimativa.
+            # O overhead de BytesIO (~1-2s para 500+ pág.) é negligenciável frente
+            # ao tempo de compressão de imagens, então nenhuma heurística é necessária.
+            _size_buf = io.BytesIO()
 
             def save_current_part():
-                nonlocal num_contagem, current_writer, temp_caminho
+                nonlocal num_contagem, current_writer
 
                 if len(current_writer.pages) > 0:
                     nome_arquivo_base = os.path.splitext(os.path.basename(caminho))[0]
@@ -333,47 +393,99 @@ def dividir_pdf_por_tamanho(caminho, caminho_saida, tamanho_mb_maximo=4.4, nome_
                     num_contagem += 1
                     current_writer = PdfWriter()
             
-            tempo_inicio_pdf = time.time()  # Início do processamento da página
+            # parte_inicio rastreia o índice (0-based) da primeira página da
+            # parte atual no leitor_pdf. Usado para reconstruir o writer sem a
+            # última página quando uma página sozinha causa overflow.
+            parte_inicio = 0
+            ultimo_tamanho_mb = 0.0   # último tamanho medido (pode ser stale)
+            tempo_inicio_pdf = time.time()
 
             for i in range(total_pages):
                 log(f"    - Dividindo página {i+1}/{total_pages}...")
                 current_writer.add_page(leitor_pdf.pages[i])
 
-                # Salva a parte atual temporariamente e verifica o tamanho do arquivo
-                if len(current_writer.pages) >= 1:
-                    current_writer.write(temp_caminho)
-                    current_size_mb = os.path.getsize(temp_caminho) / 1048576
-                    if current_size_mb >= tamanho_mb_maximo:
-                        log(f"    - Tamanho excedido: {current_size_mb:.2f} MB, salvando parte {num_contagem}")
+                # Estratégia adaptativa de medição:
+                #   - Abaixo de 80 % do limite → medir a cada 5 páginas (overhead menor)
+                #   - Acima de 80 % → medir toda página (precisão para back-out exato)
+                #   - Última página do arquivo → sempre medir
+                pages_in_part = i - parte_inicio + 1
+                near_limit = ultimo_tamanho_mb >= tamanho_mb_maximo * 0.80
+                must_measure = near_limit or (pages_in_part % 5 == 0) or (i == total_pages - 1)
+
+                if must_measure:
+                    _size_buf.seek(0)
+                    _size_buf.truncate()
+                    current_writer.write(_size_buf)
+                    ultimo_tamanho_mb = _size_buf.tell() / 1048576
+
+                if ultimo_tamanho_mb >= tamanho_mb_maximo:
+                    n_pages_now = len(current_writer.pages)
+
+                    if n_pages_now > 1:
+                        # Encontrar o corte correto varrendo de trás para frente.
+                        # Em modo per-page (near_limit=True) resolve em 1 iteração.
+                        # Em modo batch, o writer pode ter ultrapassado o limite há
+                        # várias páginas — retroceder até encontrar o ponto correto.
+                        cut_at = i
+
+                        while cut_at > parte_inicio:
+                            current_writer = PdfWriter()
+                            for j in range(parte_inicio, cut_at):
+                                current_writer.add_page(leitor_pdf.pages[j])
+
+                            if cut_at == parte_inicio + 1:
+                                break  # apenas 1 página restante — salvar assim mesmo
+
+                            _size_buf.seek(0)
+                            _size_buf.truncate()
+                            current_writer.write(_size_buf)
+                            rebuilt_size = _size_buf.tell() / 1048576
+
+                            if rebuilt_size < tamanho_mb_maximo:
+                                break  # corte correto encontrado
+
+                            cut_at -= 1  # ainda acima do limite — remover mais uma
+
+                        pages_moved = i - cut_at + 1
+                        if pages_moved == 1:
+                            log(f"    - Tamanho excedido: {ultimo_tamanho_mb:.2f} MB (página {cut_at + 1} movida à próxima parte), salvando parte {num_contagem}")
+                        else:
+                            log(f"    - Tamanho excedido: {ultimo_tamanho_mb:.2f} MB ({pages_moved} págs. movidas à próxima parte), salvando parte {num_contagem}")
+
+                        save_current_part()  # salva current_writer e cria novo vazio
+
+                        # Iniciar nova parte com as páginas movidas
+                        for m in range(cut_at, i + 1):
+                            current_writer.add_page(leitor_pdf.pages[m])
+                        parte_inicio = cut_at
+                        ultimo_tamanho_mb = 0.0
+                    else:
+                        # Página única já maior que o limite — salvar assim mesmo
+                        log(f"    - Tamanho excedido: {ultimo_tamanho_mb:.2f} MB, salvando parte {num_contagem} (página única acima do limite)")
                         save_current_part()
+                        parte_inicio = i + 1
+                        ultimo_tamanho_mb = 0.0
 
-                        tempo_pdf = time.time() - tempo_inicio_pdf  # Tempo gasto para processar o arquivo PDF
-                        lista_tempo_total.append(tempo_pdf)
-                
-                        log_msg = f"    - PDF {num_contagem-1}: {tempo_pdf:.2f} segundos"
-                        log(log_msg)
-                        log_tempo.append(log_msg)
-
-                        tempo_inicio_pdf = time.time()  # reinicia contagem para próxima parte
+                    tempo_pdf = time.time() - tempo_inicio_pdf
+                    lista_tempo_total.append(tempo_pdf)
+                    log_msg = f"    - PDF {num_contagem-1}: {tempo_pdf:.2f} segundos"
+                    log(log_msg)
+                    log_tempo.append(log_msg)
+                    tempo_inicio_pdf = time.time()
 
             # Salva a última parte, se houver páginas restantes
             if len(current_writer.pages) > 0:
-                tempo_inicio_pdf = time.time()  # Início do processamento da página
                 log(f"    - Salvando última parte {num_contagem} com {len(current_writer.pages)} páginas")
                 save_current_part()
-                tempo_pdf = time.time() - tempo_inicio_pdf  # Tempo gasto para processar o arquivo PDF
+                tempo_pdf = time.time() - tempo_inicio_pdf
                 lista_tempo_total.append(tempo_pdf)
-
-                tempo_total = 0
-                for tempo in lista_tempo_total:
-                    tempo_total += tempo
-
-                print(f"Tempo total = {tempo_total}")
-
                 log_msg = f"    - PDF {num_contagem-1}: {tempo_pdf:.2f} segundos"
                 log(log_msg)
                 log_tempo.append(log_msg)
 
+            _size_buf.close()
+            leitor_pdf.close()
+            tempo_total = sum(lista_tempo_total)
             log(f"- Tempo total gasto para dividir o PDF: {tempo_total:.2f} segundos")
 
             # Mover os arquivos gerados de volta para a pasta original

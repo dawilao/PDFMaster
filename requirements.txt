@@ -1,0 +1,9 @@
+# PDFMaster - Dependências
+# Instalar com: python -m pip install -r requirements.txt
+
+customtkinter==5.2.2   # Interface gráfica moderna (janelas, botões, temas)
+Pillow==12.2.0         # Manipulação de imagens (JPG → PDF)
+pypdf==6.10.2          # Leitura e escrita de arquivos PDF
+reportlab==4.5.1       # Geração de PDFs a partir de imagens
+requests==2.32.5       # Verificação de atualizações via GitHub
+packaging==25.0        # Comparação de versões (check_for_updates)
