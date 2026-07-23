@@ -305,7 +305,7 @@ def reduzir_tamanho_pdf(input_pdf, output_pdf, qualidade_imagem=30, nivel_compre
         return False, 0
 
 
-def dividir_pdf_por_tamanho(caminho, caminho_saida, tamanho_mb_maximo=4.7, nome_usuario=None, callback=None):
+def dividir_pdf_por_tamanho(caminho, caminho_saida, tamanho_mb_maximo=14.7, nome_usuario=None, callback=None):
     """
     Divide um PDF em partes menores baseado no tamanho máximo especificado
     
@@ -360,7 +360,7 @@ def dividir_pdf_por_tamanho(caminho, caminho_saida, tamanho_mb_maximo=4.7, nome_
 
         log("- Iniciando divisão do PDF...")
 
-        if tamanho_compactado > 4.9:
+        if tamanho_compactado > 14.9:
             # Atualizar o caminho para o arquivo temporário copiado
             leitor_pdf = PdfReader(caminho_temp)
             total_pages = len(leitor_pdf.pages)

@@ -324,7 +324,7 @@ class PDFMasterApp:
 
         # Botão para abrir o caminho especificado
         self.btn_abrir_pasta_dividir_pdf_por_tamanho = customtkinter.CTkButton(master=frame_aba_dividir_pdf_por_tamanho, 
-                                                  text="Dividir PDF por Tamanho: até 5 MB", 
+                                                  text="Dividir PDF por Tamanho: até 15 MB",
                                                   command=self.dividir_pdf_por_tamanho_interface)
         self.btn_abrir_pasta_dividir_pdf_por_tamanho.pack(pady=10)
         config_btn(self.btn_abrir_pasta_dividir_pdf_por_tamanho)
@@ -651,7 +651,7 @@ class PDFMasterApp:
 
         # Verifica o tamanho do arquivo
         tamanho_arquivo = os.path.getsize(arquivo)
-        tamanho_limite = 4.9 * 1024*1024
+        tamanho_limite = 14.9 * 1024*1024
 
         if tamanho_arquivo < tamanho_limite:
             tamanho_mb = tamanho_arquivo / (1024*1024)  # Converte para MB
@@ -659,7 +659,7 @@ class PDFMasterApp:
                 "Arquivo pequeno",
                 (
                     f"O arquivo selecionado possui {tamanho_mb:.2f} MB, "
-                    f"que é menor que 5 MB.\n\n"
+                    f"que é menor que 15 MB.\n\n"
                     f"Deseja prosseguir mesmo assim?"
                 )
             )
@@ -824,7 +824,7 @@ class PDFMasterApp:
             "Funções disponíveis:\n"
             "• Imagem para PDF: Converte imagens JPG em PDF\n"
             "• Dividir PDF: Separa páginas em arquivos individuais\n"
-            "• Dividir por Tamanho: Divide PDFs em arquivos ≤ 5MB"
+            "• Dividir por Tamanho: Divide PDFs em arquivos ≤ 15MB"
         )
 
     def _get_info_versao(self):
